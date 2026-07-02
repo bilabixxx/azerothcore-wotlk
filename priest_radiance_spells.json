@@ -1,0 +1,851 @@
+{
+  "schema_version": "1.0.0",
+  "class": "Priest",
+  "specialization": "Radiance",
+  "specialization_id": "priest_radiance",
+  "game_version": "Wrath of the Lich King 3.3.5a",
+  "design_note": "Custom private-server spell package. Values are tuned to match the uploaded Radiance design: Holy/Fire Radiant damage, aggressive burst, execute pressure, and the Fervor risk resource.",
+  "resource": {
+    "id": "fervor",
+    "name": "Fervor",
+    "type": "secondary_resource",
+    "display_type": "stack",
+    "max_stacks_base": 5,
+    "generated_by": [
+      "flame_of_judgment",
+      "mark_of_sin"
+    ],
+    "consumed_by": [
+      "divine_judgment"
+    ],
+    "decay_rule": "If the priest does not cast a spell that generates or consumes Fervor for 6 sec, 1 stack is lost.",
+    "risk_rule": "At 3 or more stacks, direct melee and spell hits against the priest deal 8% additional damage for each stack above 2. This does not affect periodic damage.",
+    "risk_table": [
+      {
+        "stacks": 0,
+        "bonus_direct_damage_taken_pct": 0
+      },
+      {
+        "stacks": 1,
+        "bonus_direct_damage_taken_pct": 0
+      },
+      {
+        "stacks": 2,
+        "bonus_direct_damage_taken_pct": 0
+      },
+      {
+        "stacks": 3,
+        "bonus_direct_damage_taken_pct": 8
+      },
+      {
+        "stacks": 4,
+        "bonus_direct_damage_taken_pct": 16
+      },
+      {
+        "stacks": 5,
+        "bonus_direct_damage_taken_pct": 24
+      }
+    ]
+  },
+  "spells": [
+    {
+      "id": "flame_of_judgment",
+      "name": "Flame of Judgment",
+      "category": "trainer_core_rotation",
+      "acquisition_type": "trainer",
+      "spell_school": "Radiant (Holy/Fire)",
+      "mechanic_role": "Builder / direct damage",
+      "first_learn_level": 10,
+      "ranked": true,
+      "max_rank": 10,
+      "cast_time_sec": 2.0,
+      "cooldown_sec": 0,
+      "range_yd": 30,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 13
+      },
+      "fervor_interaction": "Generates 1 Fervor per successful cast, up to the maximum.",
+      "tooltip_en": "Hurls a punishing flame of holy judgment at the enemy, dealing Radiant damage and generating 1 Fervor. If the target is affected by Mark of Sin, Flame of Judgment deals 15% additional damage.",
+      "scaling": {
+        "spell_power_coefficient_pct": 57.1
+      },
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 10,
+          "trainer_cost_copper": 900,
+          "trainer_cost_display": "0g 9s 0c",
+          "base_damage_min": 34,
+          "base_damage_max": 40
+        },
+        {
+          "rank": 2,
+          "required_level": 16,
+          "trainer_cost_copper": 3600,
+          "trainer_cost_display": "0g 36s 0c",
+          "base_damage_min": 68,
+          "base_damage_max": 80
+        },
+        {
+          "rank": 3,
+          "required_level": 24,
+          "trainer_cost_copper": 18000,
+          "trainer_cost_display": "1g 80s 0c",
+          "base_damage_min": 137,
+          "base_damage_max": 160
+        },
+        {
+          "rank": 4,
+          "required_level": 32,
+          "trainer_cost_copper": 80000,
+          "trainer_cost_display": "8g 0s 0c",
+          "base_damage_min": 238,
+          "base_damage_max": 276
+        },
+        {
+          "rank": 5,
+          "required_level": 40,
+          "trainer_cost_copper": 200000,
+          "trainer_cost_display": "20g 0s 0c",
+          "base_damage_min": 371,
+          "base_damage_max": 430
+        },
+        {
+          "rank": 6,
+          "required_level": 48,
+          "trainer_cost_copper": 420000,
+          "trainer_cost_display": "42g 0s 0c",
+          "base_damage_min": 542,
+          "base_damage_max": 628
+        },
+        {
+          "rank": 7,
+          "required_level": 56,
+          "trainer_cost_copper": 850000,
+          "trainer_cost_display": "85g 0s 0c",
+          "base_damage_min": 759,
+          "base_damage_max": 879
+        },
+        {
+          "rank": 8,
+          "required_level": 64,
+          "trainer_cost_copper": 1350000,
+          "trainer_cost_display": "135g 0s 0c",
+          "base_damage_min": 1002,
+          "base_damage_max": 1162
+        },
+        {
+          "rank": 9,
+          "required_level": 72,
+          "trainer_cost_copper": 1800000,
+          "trainer_cost_display": "180g 0s 0c",
+          "base_damage_min": 1211,
+          "base_damage_max": 1405
+        },
+        {
+          "rank": 10,
+          "required_level": 80,
+          "trainer_cost_copper": 2200000,
+          "trainer_cost_display": "220g 0s 0c",
+          "base_damage_min": 1410,
+          "base_damage_max": 1636
+        }
+      ]
+    },
+    {
+      "id": "mark_of_sin",
+      "name": "Mark of Sin",
+      "category": "trainer_core_rotation",
+      "acquisition_type": "trainer",
+      "spell_school": "Radiant (Holy/Fire)",
+      "mechanic_role": "DoT / delayed detonation",
+      "first_learn_level": 12,
+      "ranked": true,
+      "max_rank": 9,
+      "cast_time_sec": 1.5,
+      "cooldown_sec": 0,
+      "range_yd": 30,
+      "duration_sec": 15,
+      "tick_interval_sec": 3,
+      "ticks": 5,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 15
+      },
+      "fervor_interaction": "Generates 1 Fervor when cast. The final detonation snapshots the priest's Fervor at cast time.",
+      "tooltip_en": "Brands the enemy with a burning mark, dealing Radiant damage over 15 sec. When Mark of Sin expires naturally, it explodes for additional Radiant damage based on the Fervor you had when it was cast. Recasting Mark of Sin before it expires prevents the final explosion.",
+      "scaling": {
+        "dot_spell_power_coefficient_pct_total": 100,
+        "tick_spell_power_coefficient_pct": 20,
+        "explosion_spell_power_coefficient_pct_per_fervor_stack": 14
+      },
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 12,
+          "trainer_cost_copper": 1200,
+          "trainer_cost_display": "0g 12s 0c",
+          "tick_damage": 24,
+          "explosion_damage_per_snapshotted_fervor": 45
+        },
+        {
+          "rank": 2,
+          "required_level": 20,
+          "trainer_cost_copper": 9000,
+          "trainer_cost_display": "0g 90s 0c",
+          "tick_damage": 46,
+          "explosion_damage_per_snapshotted_fervor": 90
+        },
+        {
+          "rank": 3,
+          "required_level": 28,
+          "trainer_cost_copper": 40000,
+          "trainer_cost_display": "4g 0s 0c",
+          "tick_damage": 74,
+          "explosion_damage_per_snapshotted_fervor": 140
+        },
+        {
+          "rank": 4,
+          "required_level": 36,
+          "trainer_cost_copper": 140000,
+          "trainer_cost_display": "14g 0s 0c",
+          "tick_damage": 106,
+          "explosion_damage_per_snapshotted_fervor": 190
+        },
+        {
+          "rank": 5,
+          "required_level": 44,
+          "trainer_cost_copper": 320000,
+          "trainer_cost_display": "32g 0s 0c",
+          "tick_damage": 140,
+          "explosion_damage_per_snapshotted_fervor": 235
+        },
+        {
+          "rank": 6,
+          "required_level": 52,
+          "trainer_cost_copper": 650000,
+          "trainer_cost_display": "65g 0s 0c",
+          "tick_damage": 168,
+          "explosion_damage_per_snapshotted_fervor": 275
+        },
+        {
+          "rank": 7,
+          "required_level": 60,
+          "trainer_cost_copper": 1100000,
+          "trainer_cost_display": "110g 0s 0c",
+          "tick_damage": 180,
+          "explosion_damage_per_snapshotted_fervor": 320
+        },
+        {
+          "rank": 8,
+          "required_level": 70,
+          "trainer_cost_copper": 1700000,
+          "trainer_cost_display": "170g 0s 0c",
+          "tick_damage": 205,
+          "explosion_damage_per_snapshotted_fervor": 355
+        },
+        {
+          "rank": 9,
+          "required_level": 80,
+          "trainer_cost_copper": 2200000,
+          "trainer_cost_display": "220g 0s 0c",
+          "tick_damage": 230,
+          "explosion_damage_per_snapshotted_fervor": 390
+        }
+      ]
+    },
+    {
+      "id": "divine_judgment",
+      "name": "Divine Judgment",
+      "category": "trainer_core_rotation",
+      "acquisition_type": "trainer",
+      "spell_school": "Radiant (Holy/Fire)",
+      "mechanic_role": "Finisher / cleave burst",
+      "first_learn_level": 20,
+      "ranked": true,
+      "max_rank": 7,
+      "cast_time_sec": 0,
+      "cooldown_sec": 0,
+      "range_yd": 30,
+      "radius_yd": 8,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 4
+      },
+      "fervor_interaction": "Requires at least 1 Fervor. Consumes all current Fervor and deals damage per stack consumed.",
+      "tooltip_en": "Releases accumulated Fervor in a burst of divine fire, dealing Radiant damage to the primary target and 50% of that amount to nearby enemies within 8 yards. Requires at least 1 Fervor and consumes all Fervor.",
+      "scaling": {
+        "spell_power_coefficient_pct_per_fervor_stack": 21
+      },
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 20,
+          "trainer_cost_copper": 9000,
+          "trainer_cost_display": "0g 90s 0c",
+          "damage_per_fervor_stack": 100,
+          "secondary_target_pct": 50
+        },
+        {
+          "rank": 2,
+          "required_level": 30,
+          "trainer_cost_copper": 50000,
+          "trainer_cost_display": "5g 0s 0c",
+          "damage_per_fervor_stack": 160,
+          "secondary_target_pct": 50
+        },
+        {
+          "rank": 3,
+          "required_level": 40,
+          "trainer_cost_copper": 200000,
+          "trainer_cost_display": "20g 0s 0c",
+          "damage_per_fervor_stack": 220,
+          "secondary_target_pct": 50
+        },
+        {
+          "rank": 4,
+          "required_level": 50,
+          "trainer_cost_copper": 500000,
+          "trainer_cost_display": "50g 0s 0c",
+          "damage_per_fervor_stack": 280,
+          "secondary_target_pct": 50
+        },
+        {
+          "rank": 5,
+          "required_level": 60,
+          "trainer_cost_copper": 1100000,
+          "trainer_cost_display": "110g 0s 0c",
+          "damage_per_fervor_stack": 330,
+          "secondary_target_pct": 50
+        },
+        {
+          "rank": 6,
+          "required_level": 70,
+          "trainer_cost_copper": 1700000,
+          "trainer_cost_display": "170g 0s 0c",
+          "damage_per_fervor_stack": 380,
+          "secondary_target_pct": 50
+        },
+        {
+          "rank": 7,
+          "required_level": 80,
+          "trainer_cost_copper": 2200000,
+          "trainer_cost_display": "220g 0s 0c",
+          "damage_per_fervor_stack": 430,
+          "secondary_target_pct": 50
+        }
+      ]
+    },
+    {
+      "id": "inner_fervor",
+      "name": "Inner Fervor",
+      "category": "trainer_core_rotation",
+      "acquisition_type": "automatic_specialization_passive",
+      "spell_school": "None",
+      "mechanic_role": "Passive resource system",
+      "first_learn_level": 10,
+      "ranked": false,
+      "max_rank": 1,
+      "trainer_cost_copper": 0,
+      "trainer_cost_display": "0g 0s 0c",
+      "tooltip_en": "Allows the priest to generate Fervor. Fervor stacks up to 5. If you do not cast a spell that generates or consumes Fervor for 6 sec, you lose 1 stack. At 3 or more stacks, direct attacks against you deal 8% additional damage for each stack above 2. Periodic damage is not affected.",
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 10,
+          "trainer_cost_copper": 0,
+          "trainer_cost_display": "0g 0s 0c",
+          "max_fervor": 5,
+          "decay_after_sec": 6,
+          "bonus_direct_damage_taken_per_stack_above_two_pct": 8
+        }
+      ]
+    },
+    {
+      "id": "radiant_strike",
+      "name": "Radiant Strike",
+      "category": "trainer_core_rotation",
+      "acquisition_type": "trainer",
+      "spell_school": "Radiant (Holy/Fire)",
+      "mechanic_role": "Instant filler / overflow valve",
+      "first_learn_level": 24,
+      "ranked": true,
+      "max_rank": 8,
+      "cast_time_sec": 0,
+      "cooldown_sec": 6,
+      "range_yd": 30,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 8
+      },
+      "fervor_interaction": "Does not generate or consume Fervor. Deals 50% additional damage while you have 5 Fervor.",
+      "tooltip_en": "Strikes the enemy with a flash of Radiant force. Does not generate or consume Fervor. Deals 50% additional damage while you have 5 Fervor.",
+      "scaling": {
+        "spell_power_coefficient_pct": 26
+      },
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 24,
+          "trainer_cost_copper": 18000,
+          "trainer_cost_display": "1g 80s 0c",
+          "base_damage": 95
+        },
+        {
+          "rank": 2,
+          "required_level": 32,
+          "trainer_cost_copper": 80000,
+          "trainer_cost_display": "8g 0s 0c",
+          "base_damage": 150
+        },
+        {
+          "rank": 3,
+          "required_level": 40,
+          "trainer_cost_copper": 200000,
+          "trainer_cost_display": "20g 0s 0c",
+          "base_damage": 220
+        },
+        {
+          "rank": 4,
+          "required_level": 48,
+          "trainer_cost_copper": 420000,
+          "trainer_cost_display": "42g 0s 0c",
+          "base_damage": 300
+        },
+        {
+          "rank": 5,
+          "required_level": 56,
+          "trainer_cost_copper": 850000,
+          "trainer_cost_display": "85g 0s 0c",
+          "base_damage": 380
+        },
+        {
+          "rank": 6,
+          "required_level": 64,
+          "trainer_cost_copper": 1350000,
+          "trainer_cost_display": "135g 0s 0c",
+          "base_damage": 450
+        },
+        {
+          "rank": 7,
+          "required_level": 72,
+          "trainer_cost_copper": 1800000,
+          "trainer_cost_display": "180g 0s 0c",
+          "base_damage": 535
+        },
+        {
+          "rank": 8,
+          "required_level": 80,
+          "trainer_cost_copper": 2200000,
+          "trainer_cost_display": "220g 0s 0c",
+          "base_damage": 620
+        }
+      ]
+    },
+    {
+      "id": "holy_chastisement",
+      "name": "Holy Chastisement",
+      "category": "trainer_utility",
+      "acquisition_type": "trainer",
+      "spell_school": "Radiant (Holy/Fire)",
+      "mechanic_role": "Interrupt / minor damage",
+      "first_learn_level": 30,
+      "ranked": true,
+      "max_rank": 4,
+      "cast_time_sec": 0,
+      "cooldown_sec": 20,
+      "range_yd": 20,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 9
+      },
+      "fervor_interaction": "No Fervor interaction.",
+      "tooltip_en": "Chastises the enemy with holy fire, interrupting spellcasting and silencing the target for 3 sec. Also deals minor Radiant damage.",
+      "scaling": {
+        "spell_power_coefficient_pct": 15
+      },
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 30,
+          "trainer_cost_copper": 50000,
+          "trainer_cost_display": "5g 0s 0c",
+          "base_damage": 120,
+          "silence_sec": 3
+        },
+        {
+          "rank": 2,
+          "required_level": 46,
+          "trainer_cost_copper": 360000,
+          "trainer_cost_display": "36g 0s 0c",
+          "base_damage": 210,
+          "silence_sec": 3
+        },
+        {
+          "rank": 3,
+          "required_level": 62,
+          "trainer_cost_copper": 1250000,
+          "trainer_cost_display": "125g 0s 0c",
+          "base_damage": 300,
+          "silence_sec": 3
+        },
+        {
+          "rank": 4,
+          "required_level": 78,
+          "trainer_cost_copper": 2150000,
+          "trainer_cost_display": "215g 0s 0c",
+          "base_damage": 390,
+          "silence_sec": 3
+        }
+      ]
+    },
+    {
+      "id": "step_of_light",
+      "name": "Step of Light",
+      "category": "trainer_utility",
+      "acquisition_type": "trainer",
+      "spell_school": "Holy",
+      "mechanic_role": "Mobility",
+      "first_learn_level": 34,
+      "ranked": true,
+      "max_rank": 3,
+      "cast_time_sec": 0,
+      "cooldown_sec": 20,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 3
+      },
+      "fervor_interaction": "No Fervor interaction.",
+      "tooltip_en": "Dashes 15 yards forward in a straight line. Cannot be used while stunned.",
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 34,
+          "trainer_cost_copper": 100000,
+          "trainer_cost_display": "10g 0s 0c",
+          "distance_yd": 10
+        },
+        {
+          "rank": 2,
+          "required_level": 54,
+          "trainer_cost_copper": 750000,
+          "trainer_cost_display": "75g 0s 0c",
+          "distance_yd": 13
+        },
+        {
+          "rank": 3,
+          "required_level": 74,
+          "trainer_cost_copper": 1950000,
+          "trainer_cost_display": "195g 0s 0c",
+          "distance_yd": 15
+        }
+      ]
+    },
+    {
+      "id": "judges_gaze",
+      "name": "Judge's Gaze",
+      "category": "trainer_utility",
+      "acquisition_type": "trainer",
+      "spell_school": "Holy",
+      "mechanic_role": "Single-target fear",
+      "first_learn_level": 38,
+      "ranked": true,
+      "max_rank": 3,
+      "cast_time_sec": 1.5,
+      "cooldown_sec": 25,
+      "range_yd": 20,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 10
+      },
+      "fervor_interaction": "No Fervor interaction.",
+      "tooltip_en": "Fixes the enemy beneath the gaze of judgment, fearing the target for 8 sec. Damage may break the effect.",
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 38,
+          "trainer_cost_copper": 160000,
+          "trainer_cost_display": "16g 0s 0c",
+          "fear_duration_sec": 5
+        },
+        {
+          "rank": 2,
+          "required_level": 56,
+          "trainer_cost_copper": 850000,
+          "trainer_cost_display": "85g 0s 0c",
+          "fear_duration_sec": 7
+        },
+        {
+          "rank": 3,
+          "required_level": 74,
+          "trainer_cost_copper": 1950000,
+          "trainer_cost_display": "195g 0s 0c",
+          "fear_duration_sec": 8
+        }
+      ]
+    },
+    {
+      "id": "purifying_glare",
+      "name": "Purifying Glare",
+      "category": "trainer_utility",
+      "acquisition_type": "trainer",
+      "spell_school": "Radiant (Holy/Fire)",
+      "mechanic_role": "Offensive dispel / punish",
+      "first_learn_level": 42,
+      "ranked": true,
+      "max_rank": 4,
+      "cast_time_sec": 0,
+      "cooldown_sec": 8,
+      "range_yd": 30,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 12
+      },
+      "fervor_interaction": "No Fervor interaction.",
+      "tooltip_en": "Removes 1 beneficial Magic effect from the enemy. If a Magic effect is removed, Purifying Glare deals Radiant damage. If the target has no dispellable Magic effect, the spell fails and consumes no mana.",
+      "scaling": {
+        "spell_power_coefficient_pct": 10
+      },
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 42,
+          "trainer_cost_copper": 280000,
+          "trainer_cost_display": "28g 0s 0c",
+          "bonus_damage_on_success": 100
+        },
+        {
+          "rank": 2,
+          "required_level": 54,
+          "trainer_cost_copper": 750000,
+          "trainer_cost_display": "75g 0s 0c",
+          "bonus_damage_on_success": 165
+        },
+        {
+          "rank": 3,
+          "required_level": 66,
+          "trainer_cost_copper": 1450000,
+          "trainer_cost_display": "145g 0s 0c",
+          "bonus_damage_on_success": 250
+        },
+        {
+          "rank": 4,
+          "required_level": 78,
+          "trainer_cost_copper": 2150000,
+          "trainer_cost_display": "215g 0s 0c",
+          "bonus_damage_on_success": 340
+        }
+      ]
+    },
+    {
+      "id": "burning_shield",
+      "name": "Burning Shield",
+      "category": "trainer_utility",
+      "acquisition_type": "trainer",
+      "spell_school": "Holy",
+      "mechanic_role": "Personal absorb shield",
+      "first_learn_level": 44,
+      "ranked": true,
+      "max_rank": 4,
+      "cast_time_sec": 0,
+      "cooldown_sec": 30,
+      "duration_sec": 15,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 14
+      },
+      "fervor_interaction": "Absorption scales with current Fervor but does not consume it.",
+      "tooltip_en": "Surrounds you with a burning shield that absorbs damage for 15 sec. The absorption increases based on your current Fervor and does not consume Fervor.",
+      "scaling": {
+        "spell_power_coefficient_pct": 6,
+        "absorb_per_current_fervor_stack": 150
+      },
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 44,
+          "trainer_cost_copper": 320000,
+          "trainer_cost_display": "32g 0s 0c",
+          "base_absorb": 220,
+          "absorb_per_current_fervor_stack": 70
+        },
+        {
+          "rank": 2,
+          "required_level": 56,
+          "trainer_cost_copper": 850000,
+          "trainer_cost_display": "85g 0s 0c",
+          "base_absorb": 310,
+          "absorb_per_current_fervor_stack": 100
+        },
+        {
+          "rank": 3,
+          "required_level": 68,
+          "trainer_cost_copper": 1550000,
+          "trainer_cost_display": "155g 0s 0c",
+          "base_absorb": 400,
+          "absorb_per_current_fervor_stack": 150
+        },
+        {
+          "rank": 4,
+          "required_level": 80,
+          "trainer_cost_copper": 2200000,
+          "trainer_cost_display": "220g 0s 0c",
+          "base_absorb": 520,
+          "absorb_per_current_fervor_stack": 180
+        }
+      ]
+    },
+    {
+      "id": "beacon_of_zeal",
+      "name": "Beacon of Zeal",
+      "category": "talent_spell",
+      "acquisition_type": "talent",
+      "talent_tree": "Radiance",
+      "required_talent": "Beacon of Zeal",
+      "required_tree_points": 20,
+      "required_level_estimate": 30,
+      "ranked": false,
+      "max_rank": 1,
+      "spell_school": "Holy",
+      "mechanic_role": "Support DPS / offensive mark",
+      "cast_time_sec": 0,
+      "cooldown_sec": 45,
+      "duration_sec": 12,
+      "range_yd": 30,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 8
+      },
+      "fervor_interaction": "Whenever you generate Fervor on the marked target with Flame of Judgment or Mark of Sin, one nearby party member gains Zeal.",
+      "tooltip_en": "Places a Beacon of Zeal on the enemy target for 12 sec. Your Radiant damage against the target is increased by 5%. Whenever you generate Fervor by casting Flame of Judgment or Mark of Sin on the target, one nearby party member within 30 yards gains Zeal, increasing spell damage and healing by 2% for 8 sec. Zeal can affect only one ally at a time.",
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 30,
+          "trainer_cost_copper": 0,
+          "trainer_cost_display": "0g 0s 0c",
+          "personal_radiant_damage_bonus_pct": 5,
+          "ally_spell_damage_and_healing_bonus_pct": 2,
+          "ally_buff_duration_sec": 8
+        }
+      ]
+    },
+    {
+      "id": "divine_sentence",
+      "name": "Divine Sentence",
+      "category": "talent_spell",
+      "acquisition_type": "talent",
+      "talent_tree": "Radiance",
+      "required_talent": "Divine Sentence",
+      "required_tree_points": 30,
+      "required_level_estimate": 40,
+      "ranked": false,
+      "max_rank": 1,
+      "spell_school": "Holy",
+      "mechanic_role": "Burst setup",
+      "cast_time_sec": 0,
+      "cooldown_sec": 60,
+      "duration_sec": 10,
+      "range_yd": 30,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 8
+      },
+      "fervor_interaction": "Empowers Divine Judgment only if it consumes at least 3 Fervor.",
+      "tooltip_en": "Sentences the enemy target for 10 sec. During this time, your Divine Judgment deals 20% additional damage to the target, but this bonus only applies if Divine Judgment consumes at least 3 Fervor.",
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 40,
+          "trainer_cost_copper": 0,
+          "trainer_cost_display": "0g 0s 0c",
+          "divine_judgment_damage_bonus_pct": 20,
+          "minimum_fervor_consumed_required": 3
+        }
+      ]
+    },
+    {
+      "id": "martyrs_edict",
+      "name": "Martyr's Edict",
+      "category": "talent_spell",
+      "acquisition_type": "talent",
+      "talent_tree": "Radiance",
+      "required_talent": "Martyr's Edict",
+      "required_tree_points": 45,
+      "required_level_estimate": 55,
+      "ranked": false,
+      "max_rank": 1,
+      "spell_school": "Holy",
+      "mechanic_role": "Defensive risk conversion",
+      "cast_time_sec": 0,
+      "cooldown_sec": 90,
+      "duration_sec": 10,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 10
+      },
+      "fervor_interaction": "Prevents and stores a portion of the bonus direct damage caused by Fervor.",
+      "tooltip_en": "For 10 sec, 30% of the bonus direct damage you would take from Fervor is prevented. The prevented damage grants you a Radiant shield and builds Martyr Charge, up to 1200 + 30% of your spell power. When Martyr's Edict ends, it deals Radiant damage equal to 40% of your Martyr Charge, split among enemies within 8 yards. Only bonus direct damage caused by Fervor can be prevented and stored by Martyr's Edict.",
+      "scaling": {
+        "martyr_charge_cap_base": 1200,
+        "martyr_charge_cap_spell_power_coefficient_pct": 30,
+        "stored_damage_to_explosion_damage_pct": 40
+      },
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 55,
+          "trainer_cost_copper": 0,
+          "trainer_cost_display": "0g 0s 0c",
+          "prevented_bonus_fervor_damage_pct": 30,
+          "damage_split_radius_yd": 8
+        }
+      ]
+    },
+    {
+      "id": "purifying_dawn",
+      "name": "Purifying Dawn",
+      "category": "talent_spell",
+      "acquisition_type": "talent",
+      "talent_tree": "Radiance",
+      "required_talent": "Purifying Dawn",
+      "required_tree_points": 50,
+      "required_level_estimate": 60,
+      "ranked": false,
+      "max_rank": 1,
+      "spell_school": "Holy",
+      "mechanic_role": "51-point capstone / burst cooldown",
+      "cast_time_sec": 0,
+      "cooldown_sec": 180,
+      "duration_sec": 15,
+      "mana_cost": {
+        "type": "percent_base_mana",
+        "value": 12
+      },
+      "fervor_interaction": "Temporarily increases maximum Fervor and changes Divine Judgment consumption rules.",
+      "tooltip_en": "Unleashes the first light of final judgment for 15 sec. While Purifying Dawn is active, your maximum Fervor is increased by 2, your Fervor cannot decay, and Divine Judgment consumes up to 5 Fervor but leaves any Fervor above 5 remaining. The additional direct damage you take from Fervor is increased by an additional 10%. When Purifying Dawn ends, all remaining Fervor is removed.",
+      "ranks": [
+        {
+          "rank": 1,
+          "required_level": 60,
+          "trainer_cost_copper": 0,
+          "trainer_cost_display": "0g 0s 0c",
+          "max_fervor_bonus": 2,
+          "fervor_decay_prevented": true,
+          "additional_fervor_risk_pct": 10
+        }
+      ]
+    }
+  ],
+  "icon_prompts": {
+    "specialization_spellbook_icon": {
+      "name": "Radiance specialization icon",
+      "prompt_en": "World of Warcraft Wrath of the Lich King spellbook specialization icon, a blazing golden-white sunburst shaped like a priestly halo and judgment seal, holy fire rays forming a sharp cross-like silhouette, subtle crimson-orange inner flame, deep dark cathedral background, high contrast, readable at 64x64, hand-painted Blizzard fantasy icon style, no border, no frame, no text."
+    },
+    "fervor_passive_icon": {
+      "name": "Inner Fervor passive icon",
+      "prompt_en": "World of Warcraft Wrath of the Lich King passive aura icon, a clenched priestly hand wrapped in burning golden scripture ribbons, rising holy fire and white-hot zeal around the wrist, intense but controlled fanatical energy, radiant gold and amber with small red-orange sparks, dark vignette background, high contrast, readable at 64x64, hand-painted Blizzard fantasy icon style, no border, no frame, no text."
+    }
+  }
+}

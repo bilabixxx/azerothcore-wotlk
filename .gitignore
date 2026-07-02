@@ -114,3 +114,11 @@ local.properties
 #  !modules/yourmodule
 #
 # ==================
+
+!modules/mod-reborn
+!modules/mod-reborn/**
+!data/sql/custom
+!data/sql/custom/db_world
+!data/sql/custom/db_world/2026_07_02_00_priest_rediance_inner_fervor.sql
+
+ChromieCraft_3.3.5a
