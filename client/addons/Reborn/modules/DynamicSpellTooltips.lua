@@ -45,6 +45,14 @@ local SPELLS = {
     [900271] = { name = "Holy Chastisement", kind = "direct", minDamage = 210, maxDamage = 210, spellPowerCoefficient = 0.15 },
     [900272] = { name = "Holy Chastisement", kind = "direct", minDamage = 300, maxDamage = 300, spellPowerCoefficient = 0.15 },
     [900273] = { name = "Holy Chastisement", kind = "direct", minDamage = 390, maxDamage = 390, spellPowerCoefficient = 0.15 },
+    [900300] = { name = "Purifying Glare", kind = "direct", minDamage = 100, maxDamage = 100, spellPowerCoefficient = 0.10 },
+    [900301] = { name = "Purifying Glare", kind = "direct", minDamage = 165, maxDamage = 165, spellPowerCoefficient = 0.10 },
+    [900302] = { name = "Purifying Glare", kind = "direct", minDamage = 250, maxDamage = 250, spellPowerCoefficient = 0.10 },
+    [900303] = { name = "Purifying Glare", kind = "direct", minDamage = 340, maxDamage = 340, spellPowerCoefficient = 0.10 },
+    [900310] = { name = "Burning Shield", kind = "burning_shield", baseAbsorb = 220, spellPowerCoefficient = 0.06, absorbPerFervorStack = 70 },
+    [900311] = { name = "Burning Shield", kind = "burning_shield", baseAbsorb = 310, spellPowerCoefficient = 0.06, absorbPerFervorStack = 100 },
+    [900312] = { name = "Burning Shield", kind = "burning_shield", baseAbsorb = 400, spellPowerCoefficient = 0.06, absorbPerFervorStack = 150 },
+    [900313] = { name = "Burning Shield", kind = "burning_shield", baseAbsorb = 520, spellPowerCoefficient = 0.06, absorbPerFervorStack = 180 },
 }
 
 local function Round(value)
@@ -121,6 +129,12 @@ local function CalculateExplosionDamage(def)
     return Round(def.explosionDamage + (spellPower * def.explosionCoefficient))
 end
 
+local function CalculateBurningShieldAbsorb(def)
+    local spellPower = GetRadiantSpellPower()
+    local fervor = GetCurrentFervor()
+    return Round(def.baseAbsorb + (spellPower * def.spellPowerCoefficient) + (fervor * def.absorbPerFervorStack))
+end
+
 local function ReplaceLastDamageBefore(text, phrase, value)
     local startIndex = text:find(phrase, 1, true)
     if not startIndex then
@@ -173,6 +187,8 @@ local function RewriteDamageLine(tooltip, def)
             elseif def.kind == "fervor_total" and text:find("Radiant damage per Fervor consumed", 1, true) then
                 rewritten = text:gsub("(%d+)( Radiant damage per Fervor consumed)", tostring(CalculatePrimaryDamage(def)) .. "%2", 1)
                 changed = true
+            elseif def.kind == "burning_shield" then
+                rewritten, changed = ReplaceLastDamageBefore(text, "damage for 15 sec", CalculateBurningShieldAbsorb(def))
             end
 
             if changed then

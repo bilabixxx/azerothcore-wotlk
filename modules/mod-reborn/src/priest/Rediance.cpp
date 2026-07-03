@@ -8,6 +8,7 @@
 #include "Random.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
+#include "SpellAuraEffects.h"
 #include "SpellAuras.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
@@ -43,6 +44,9 @@ constexpr uint32 SPELL_PURIFYING_GLARE_FIRST = 900300;
 constexpr uint32 SPELL_PURIFYING_GLARE_LAST = 900303;
 constexpr float PURIFYING_GLARE_SP_COEFFICIENT = 0.10f;
 
+constexpr uint32 SPELL_BURNING_SHIELD_FIRST = 900310;
+constexpr uint32 SPELL_BURNING_SHIELD_LAST = 900313;
+
 struct FervorState
 {
     uint8 stacks = 0;
@@ -65,6 +69,12 @@ struct PurifyingGlareRankData
 {
     uint32 spellId;
     uint32 bonusDamageOnSuccess;
+};
+
+struct BurningShieldRankData
+{
+    uint32 spellId;
+    uint32 absorbPerFervorStack;
 };
 
 struct MarkSnapshotKey
@@ -124,6 +134,14 @@ constexpr std::array<PurifyingGlareRankData, 4> PurifyingGlareRanks =
     {900303, 340},
 }};
 
+constexpr std::array<BurningShieldRankData, 4> BurningShieldRanks =
+{{
+    {900310, 70},
+    {900311, 100},
+    {900312, 150},
+    {900313, 180},
+}};
+
 bool IsFlameOfJudgment(uint32 spellId)
 {
     return spellId >= SPELL_FLAME_OF_JUDGMENT_FIRST && spellId <= SPELL_FLAME_OF_JUDGMENT_LAST;
@@ -147,6 +165,11 @@ bool IsRadiantStrike(uint32 spellId)
 bool IsPurifyingGlare(uint32 spellId)
 {
     return spellId >= SPELL_PURIFYING_GLARE_FIRST && spellId <= SPELL_PURIFYING_GLARE_LAST;
+}
+
+bool IsBurningShield(uint32 spellId)
+{
+    return spellId >= SPELL_BURNING_SHIELD_FIRST && spellId <= SPELL_BURNING_SHIELD_LAST;
 }
 
 bool IsGenerator(uint32 spellId)
@@ -196,6 +219,16 @@ DispelChargesList GetPurifyingGlareDispelCandidates(Unit* caster, Unit* target, 
         target->GetDispellableAuraList(caster, SpellInfo::GetDispelMask(DISPEL_MAGIC), dispelList, spellInfo);
 
     return dispelList;
+}
+
+BurningShieldRankData const* GetBurningShieldRank(uint32 spellId)
+{
+    auto itr = std::find_if(BurningShieldRanks.begin(), BurningShieldRanks.end(), [spellId](BurningShieldRankData const& rank)
+    {
+        return rank.spellId == spellId;
+    });
+
+    return itr != BurningShieldRanks.end() ? &*itr : nullptr;
 }
 
 FervorState& GetState(Player* player)
@@ -388,6 +421,27 @@ void CastPurifyingGlare(Player* caster, Unit* target, SpellInfo const* spellInfo
     uint32 spellPowerDamage = uint32(float(caster->SpellBaseDamageBonusDone(SpellSchoolMask(SPELL_SCHOOL_MASK_HOLY | SPELL_SCHOOL_MASK_FIRE))) * PURIFYING_GLARE_SP_COEFFICIENT);
     DealRadiantDamage(caster, target, spellInfo, rank->bonusDamageOnSuccess + spellPowerDamage);
 }
+
+void ApplyBurningShieldFervorBonus(Player* caster, SpellInfo const* spellInfo)
+{
+    if (!caster || !spellInfo)
+        return;
+
+    BurningShieldRankData const* rank = GetBurningShieldRank(spellInfo->Id);
+    if (!rank)
+        return;
+
+    uint8 stacks = GetState(caster).stacks;
+    if (!stacks)
+        return;
+
+    Aura* aura = caster->GetAura(spellInfo->Id);
+    AuraEffect* effect = aura ? aura->GetEffect(EFFECT_0) : nullptr;
+    if (!effect)
+        return;
+
+    effect->SetAmount(effect->GetAmount() + int32(rank->absorbPerFervorStack) * int32(stacks));
+}
 }
 
 class reborn_rediance_player_script : public PlayerScript
@@ -501,6 +555,8 @@ public:
             CastDivineJudgment(player, spell ? spell->m_targets.GetUnitTarget() : nullptr, spellInfo);
         else if (IsPurifyingGlare(spellInfo->Id))
             CastPurifyingGlare(player, spell ? spell->m_targets.GetUnitTarget() : nullptr, spellInfo);
+        else if (IsBurningShield(spellInfo->Id))
+            ApplyBurningShieldFervorBonus(player, spellInfo);
     }
 };
 

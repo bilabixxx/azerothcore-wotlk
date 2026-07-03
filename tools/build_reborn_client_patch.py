@@ -28,6 +28,7 @@ SPELL_HOLY_CHASTISEMENT_FIRST = 900270
 SPELL_STEP_OF_LIGHT_FIRST = 900280
 SPELL_JUDGES_GAZE_FIRST = 900290
 SPELL_PURIFYING_GLARE_FIRST = 900300
+SPELL_BURNING_SHIELD_FIRST = 900310
 SPELLICON_REDIANCE = 90020
 SPELLICON_FERVOR = 90021
 SPELLICON_FLAME_OF_JUDGMENT = 90022
@@ -38,6 +39,7 @@ SPELLICON_HOLY_CHASTISEMENT = 90026
 SPELLICON_STEP_OF_LIGHT = 90027
 SPELLICON_JUDGES_GAZE = 90028
 SPELLICON_PURIFYING_GLARE = 90029
+SPELLICON_BURNING_SHIELD = 90030
 SKILLLINEABILITY_INNER_FERVOR = 900200
 SKILLLINEABILITY_FERVOR_AURA = 900201
 SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST = 900210
@@ -48,6 +50,7 @@ SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST = 900270
 SKILLLINEABILITY_STEP_OF_LIGHT_FIRST = 900280
 SKILLLINEABILITY_JUDGES_GAZE_FIRST = 900290
 SKILLLINEABILITY_PURIFYING_GLARE_FIRST = 900300
+SKILLLINEABILITY_BURNING_SHIELD_FIRST = 900310
 SKILLRACECLASS_REDIANCE = 9003
 PRIEST_CLASSMASK = 16
 ALL_RACES_MASK = 0
@@ -128,6 +131,14 @@ PURIFYING_GLARE_RANKS = [
     (2, 54, 165),
     (3, 66, 250),
     (4, 78, 340),
+]
+
+# rank, required level, base absorb (before spell power), absorb per current Fervor stack
+BURNING_SHIELD_RANKS = [
+    (1, 44, 220, 70),
+    (2, 56, 310, 100),
+    (3, 68, 400, 150),
+    (4, 80, 520, 180),
 ]
 
 
@@ -258,6 +269,13 @@ def purifying_glare_description() -> str:
     )
 
 
+def burning_shield_description() -> str:
+    return (
+        "Surrounds you with a burning shield that absorbs $s1 damage for 15 sec. The absorption "
+        "increases based on your current Fervor and does not consume Fervor."
+    )
+
+
 def fervor_damage_taken_pct(stacks: int) -> int:
     return max(0, stacks - 2) * 8
 
@@ -278,6 +296,7 @@ def owned_spell_ids() -> list[int]:
         *[SPELL_STEP_OF_LIGHT_FIRST + rank - 1 for rank, *_ in STEP_OF_LIGHT_RANKS],
         *[SPELL_JUDGES_GAZE_FIRST + rank - 1 for rank, *_ in JUDGES_GAZE_RANKS],
         *[SPELL_PURIFYING_GLARE_FIRST + rank - 1 for rank, *_ in PURIFYING_GLARE_RANKS],
+        *[SPELL_BURNING_SHIELD_FIRST + rank - 1 for rank, *_ in BURNING_SHIELD_RANKS],
     ]
 
 
@@ -293,12 +312,13 @@ def owned_skilllineability_ids() -> list[int]:
         *[SKILLLINEABILITY_STEP_OF_LIGHT_FIRST + rank - 1 for rank, *_ in STEP_OF_LIGHT_RANKS],
         *[SKILLLINEABILITY_JUDGES_GAZE_FIRST + rank - 1 for rank, *_ in JUDGES_GAZE_RANKS],
         *[SKILLLINEABILITY_PURIFYING_GLARE_FIRST + rank - 1 for rank, *_ in PURIFYING_GLARE_RANKS],
+        *[SKILLLINEABILITY_BURNING_SHIELD_FIRST + rank - 1 for rank, *_ in BURNING_SHIELD_RANKS],
     ]
 
 
 def patch_spellicon(src: Path, dst: Path) -> None:
     dbc = Dbc(src)
-    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN, SPELLICON_DIVINE_JUDGMENT, SPELLICON_RADIANT_STRIKE, SPELLICON_HOLY_CHASTISEMENT, SPELLICON_STEP_OF_LIGHT, SPELLICON_JUDGES_GAZE, SPELLICON_PURIFYING_GLARE])
+    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN, SPELLICON_DIVINE_JUDGMENT, SPELLICON_RADIANT_STRIKE, SPELLICON_HOLY_CHASTISEMENT, SPELLICON_STEP_OF_LIGHT, SPELLICON_JUDGES_GAZE, SPELLICON_PURIFYING_GLARE, SPELLICON_BURNING_SHIELD])
     for id_, texture in [
         (SPELLICON_REDIANCE, "Interface\\Icons\\Rediance_spellbook"),
         (SPELLICON_FERVOR, "Interface\\Icons\\Fervor"),
@@ -310,6 +330,7 @@ def patch_spellicon(src: Path, dst: Path) -> None:
         (SPELLICON_STEP_OF_LIGHT, "Interface\\Icons\\Step_of_Light"),
         (SPELLICON_JUDGES_GAZE, "Interface\\Icons\\Judges_Gaze"),
         (SPELLICON_PURIFYING_GLARE, "Interface\\Icons\\Purifying_Glare"),
+        (SPELLICON_BURNING_SHIELD, "Interface\\Icons\\Burning_Shield"),
     ]:
         row = list(dbc.find(237))
         row[0] = id_
@@ -350,6 +371,7 @@ def patch_skilllineability(src: Path, dst: Path) -> None:
     entries.extend((SKILLLINEABILITY_STEP_OF_LIGHT_FIRST + rank - 1, SPELL_STEP_OF_LIGHT_FIRST + rank - 1) for rank, *_ in STEP_OF_LIGHT_RANKS)
     entries.extend((SKILLLINEABILITY_JUDGES_GAZE_FIRST + rank - 1, SPELL_JUDGES_GAZE_FIRST + rank - 1) for rank, *_ in JUDGES_GAZE_RANKS)
     entries.extend((SKILLLINEABILITY_PURIFYING_GLARE_FIRST + rank - 1, SPELL_PURIFYING_GLARE_FIRST + rank - 1) for rank, *_ in PURIFYING_GLARE_RANKS)
+    entries.extend((SKILLLINEABILITY_BURNING_SHIELD_FIRST + rank - 1, SPELL_BURNING_SHIELD_FIRST + rank - 1) for rank, *_ in BURNING_SHIELD_RANKS)
     for id_, spell in entries:
         row = list(template)
         row[0] = id_
@@ -760,9 +782,12 @@ def patch_spell(src: Path, dst: Path) -> None:
         spell[40] = 0
         spell[46] = 4       # RangeIndex: 30 yd
         spell[49] = 0
-        for idx in [72, 73, 74, 81, 82, 87, 88, 95, 96, 97, 98, 99, 100, 116, 117, 118]:
+        for idx in [72, 73, 81, 82, 87, 88, 95, 96, 97, 98, 99, 100, 116, 117, 118]:
             spell[idx] = 0
         spell[71] = 3       # Effect0: DUMMY
+        spell[74] = 1       # EffectDieSides[0]: no roll variance (range 1..1). Left at 0 originally, which
+                             # made the client tooltip render a reversed "max to min" spread instead of a
+                             # single fixed number for the $s1 token.
         spell[80] = bonus_damage - 1
         spell[86] = 6       # ImplicitTargetA[0]: enemy
         spell[131] = 71
@@ -784,6 +809,58 @@ def patch_spell(src: Path, dst: Path) -> None:
         spell[218] = f32(1.0)
         spell[225] = SPELL_SCHOOL_RADIANT
         spell[229] = f32(0.10)
+        spell[230] = f32(0.0)
+        spell[231] = f32(0.0)
+        dbc.append(spell)
+
+    for rank, level, base_absorb, absorb_per_stack in BURNING_SHIELD_RANKS:
+        # Clone Power Word: Shield (17): already SPELL_EFFECT_APPLY_AURA + SPELL_AURA_SCHOOL_ABSORB (69)
+        # with EffectMiscValue[0]=127 (all schools), self-target, instant cast. The engine natively
+        # computes EffectBasePoints + spell power coefficient into the absorb pool at apply time; the
+        # additional Fervor-based bonus (which the DBC cannot know about) is added on top in
+        # reborn_rediance_spell_script via AuraEffect::SetAmount after the aura is applied.
+        spell = list(dbc.find(17))
+        spell_id = SPELL_BURNING_SHIELD_FIRST + rank - 1
+        spell[0] = spell_id
+        spell[1] = 0        # Category: independent cooldown, not shared with Power Word: Shield
+        spell[28] = 1       # CastingTimeIndex: instant (inherited from PW:Shield, kept explicit)
+        spell[29] = 30000   # RecoveryTime: 30 sec real per-spell cooldown
+        spell[30] = 0       # CategoryRecoveryTime: unused
+        spell[37] = level
+        spell[38] = level
+        spell[39] = level
+        spell[40] = 8       # DurationIndex: 15000ms (verified against SpellDuration.dbc ID 8)
+        spell[46] = 1       # RangeIndex: Self Only
+        spell[74] = 1       # EffectDieSides[0]: no roll variance, basePoints+1 = exact value
+        spell[86] = 1       # ImplicitTargetA[0]: self
+        spell[89] = 0       # ImplicitTargetB[0]: none (PW:Shield allows an ally target, we don't)
+        spell[27] = 0       # ExcludeTargetAuraSpell: cleared. PW:Shield sets this to 6788 (Weakened Soul) so it
+                             # can't be recast on a target that already has it; Burning Shield has nothing to do
+                             # with Weakened Soul, but leaving 6788 here made the cast fail with
+                             # SPELL_FAILED_TARGET_AURASTATE (generic "can't do that" client message) whenever
+                             # the caster happened to have Weakened Soul from an unrelated real PW:Shield.
+        spell[110] = 127    # EffectMiscValue[0]: absorb all schools (inherited from PW:Shield, kept explicit)
+        spell[209] = 0      # SpellFamilyFlags: cleared, PW:Shield-specific flags (Rapture, Borrowed Time...) don't apply
+        spell[210] = 0
+        spell[211] = 0
+        spell[133] = SPELLICON_BURNING_SHIELD
+        spell[134] = SPELLICON_BURNING_SHIELD
+        dbc.set_loc(spell, 136, 152, "Burning Shield")
+        dbc.set_loc(spell, 153, 169, f"Rank {rank}")
+        dbc.set_loc(spell, 170, 186, burning_shield_description())
+        dbc.set_loc(spell, 187, 203, "Absorbs $s1 damage for 15 sec. Absorption scales with current Fervor but does not consume it.")
+        spell[80] = base_absorb - 1
+        spell[204] = 14      # ManaCostPercentage: 14% of base mana
+        spell[205] = 133
+        spell[206] = 0
+        spell[208] = 6       # SpellFamilyName: Priest
+        spell[213] = 1
+        spell[214] = 1
+        spell[216] = f32(1.0)
+        spell[217] = f32(1.0)
+        spell[218] = f32(1.0)
+        spell[225] = 2       # SchoolMask: Holy
+        spell[229] = f32(0.06)
         spell[230] = f32(0.0)
         spell[231] = f32(0.0)
         dbc.append(spell)
@@ -924,6 +1001,7 @@ def build(client: Path, repo: Path) -> None:
     write_blp2_icon(repo / "icons_to_convert" / 'Step of Light".png', icons / "Step_of_Light.blp")
     write_blp2_icon(repo / "icons_to_convert" / "Judge's Gaze.png", icons / "Judges_Gaze.blp")
     write_blp2_icon(repo / "icons_to_convert" / "Purifying Glare.png", icons / "Purifying_Glare.blp")
+    write_blp2_icon(repo / "icons_to_convert" / "Burning Shield.png", icons / "Burning_Shield.blp")
 
     files = []
     for file in sorted(stage.rglob("*")):
