@@ -33,6 +33,14 @@ local SPELLS = {
     [900254] = { name = "Divine Judgment", kind = "fervor_total", baseDamage = 330, spellPowerCoefficient = 0.21, resource = "fervor" },
     [900255] = { name = "Divine Judgment", kind = "fervor_total", baseDamage = 380, spellPowerCoefficient = 0.21, resource = "fervor" },
     [900256] = { name = "Divine Judgment", kind = "fervor_total", baseDamage = 430, spellPowerCoefficient = 0.21, resource = "fervor" },
+    [900260] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 95, spellPowerCoefficient = 0.26 },
+    [900261] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 150, spellPowerCoefficient = 0.26 },
+    [900262] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 220, spellPowerCoefficient = 0.26 },
+    [900263] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 300, spellPowerCoefficient = 0.26 },
+    [900264] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 380, spellPowerCoefficient = 0.26 },
+    [900265] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 450, spellPowerCoefficient = 0.26 },
+    [900266] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 535, spellPowerCoefficient = 0.26 },
+    [900267] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 620, spellPowerCoefficient = 0.26 },
 }
 
 local function Round(value)
@@ -81,6 +89,15 @@ local function CalculatePrimaryDamage(def)
     if def.kind == "periodic" then
         local spellPower = GetRadiantSpellPower()
         return Round((def.tickDamage + (spellPower * def.spellPowerCoefficient)) * def.ticks)
+    end
+
+    if def.kind == "radiant_strike" then
+        local spellPower = GetRadiantSpellPower()
+        local damage = def.baseDamage + (spellPower * def.spellPowerCoefficient)
+        if GetCurrentFervor() >= 5 then
+            damage = damage * 1.5
+        end
+        return tostring(Round(damage))
     end
 
     local amount = GetResourceAmount(def.resource)
@@ -133,7 +150,7 @@ local function RewriteDamageLine(tooltip, def)
             local rewritten = text
             local changed = false
 
-            if def.kind == "direct" then
+            if def.kind == "direct" or def.kind == "radiant_strike" then
                 rewritten, changed = ReplaceLastDamageBefore(text, "Radiant damage", CalculatePrimaryDamage(def))
             elseif def.kind == "periodic" then
                 if text:find("over", 1, true) then

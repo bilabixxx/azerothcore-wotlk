@@ -34,6 +34,10 @@ constexpr uint32 SPELL_DIVINE_JUDGMENT_LAST = 900256;
 constexpr float DIVINE_JUDGMENT_SP_COEFFICIENT_PER_FERVOR = 0.21f;
 constexpr float DIVINE_JUDGMENT_RADIUS = 8.0f;
 
+constexpr uint32 SPELL_RADIANT_STRIKE_FIRST = 900260;
+constexpr uint32 SPELL_RADIANT_STRIKE_LAST = 900267;
+constexpr uint32 RADIANT_STRIKE_FERVOR_BONUS_PCT = 50;
+
 struct FervorState
 {
     uint8 stacks = 0;
@@ -114,6 +118,11 @@ bool IsMarkOfSin(uint32 spellId)
 bool IsDivineJudgment(uint32 spellId)
 {
     return spellId >= SPELL_DIVINE_JUDGMENT_FIRST && spellId <= SPELL_DIVINE_JUDGMENT_LAST;
+}
+
+bool IsRadiantStrike(uint32 spellId)
+{
+    return spellId >= SPELL_RADIANT_STRIKE_FIRST && spellId <= SPELL_RADIANT_STRIKE_LAST;
 }
 
 bool IsGenerator(uint32 spellId)
@@ -484,15 +493,27 @@ public:
 
     void ModifySpellDamageTaken(Unit* target, Unit* attacker, int32& damage, SpellInfo const* spellInfo) override
     {
-        if (!target || !spellInfo || damage <= 0 || !IsFlameOfJudgment(spellInfo->Id))
+        if (!target || !spellInfo || damage <= 0)
             return;
 
-        if (Player* player = attacker ? attacker->ToPlayer() : nullptr)
-            if (player->getClass() == CLASS_PRIEST)
-                GenerateFervor(player);
+        if (IsFlameOfJudgment(spellInfo->Id))
+        {
+            if (Player* player = attacker ? attacker->ToPlayer() : nullptr)
+                if (player->getClass() == CLASS_PRIEST)
+                    GenerateFervor(player);
 
-        if (HasMarkOfSin(target))
-            damage += CalculatePct(damage, 15);
+            if (HasMarkOfSin(target))
+                damage += CalculatePct(damage, 15);
+
+            return;
+        }
+
+        if (IsRadiantStrike(spellInfo->Id))
+        {
+            Player* player = attacker ? attacker->ToPlayer() : nullptr;
+            if (player && player->getClass() == CLASS_PRIEST && GetState(player).stacks >= MAX_FERVOR_STACKS)
+                damage += CalculatePct(damage, RADIANT_STRIKE_FERVOR_BONUS_PCT);
+        }
     }
 };
 

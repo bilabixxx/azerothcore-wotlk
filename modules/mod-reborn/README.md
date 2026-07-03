@@ -18,11 +18,13 @@ Current Rediance IDs:
 - Spell `900210-900219`: Flame of Judgment ranks 1-10
 - Spell `900230-900238`: Mark of Sin ranks 1-9
 - Spell `900250-900256`: Divine Judgment ranks 1-7
+- Spell `900260-900267`: Radiant Strike ranks 1-8
 - Client SpellIcon `90020`: `Interface\\Icons\\Rediance_spellbook`
 - Client SpellIcon `90021`: `Interface\\Icons\\Fervor`
 - Client SpellIcon `90022`: `Interface\\Icons\\flame_of_judgment`
 - Client SpellIcon `90023`: `Interface\\Icons\\Mark_of_Sin`
 - Client SpellIcon `90024`: `Interface\\Icons\\Divine_Judgment`
+- Client SpellIcon `90025`: `Interface\\Icons\\Radiant_Strike`
 
 Client patch requirements:
 
