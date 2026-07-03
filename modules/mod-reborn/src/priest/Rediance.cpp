@@ -5,6 +5,7 @@
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "PlayerScript.h"
+#include "Random.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
 #include "SpellAuras.h"
@@ -38,6 +39,10 @@ constexpr uint32 SPELL_RADIANT_STRIKE_FIRST = 900260;
 constexpr uint32 SPELL_RADIANT_STRIKE_LAST = 900267;
 constexpr uint32 RADIANT_STRIKE_FERVOR_BONUS_PCT = 50;
 
+constexpr uint32 SPELL_PURIFYING_GLARE_FIRST = 900300;
+constexpr uint32 SPELL_PURIFYING_GLARE_LAST = 900303;
+constexpr float PURIFYING_GLARE_SP_COEFFICIENT = 0.10f;
+
 struct FervorState
 {
     uint8 stacks = 0;
@@ -54,6 +59,12 @@ struct DivineJudgmentRankData
 {
     uint32 spellId;
     uint32 damagePerFervor;
+};
+
+struct PurifyingGlareRankData
+{
+    uint32 spellId;
+    uint32 bonusDamageOnSuccess;
 };
 
 struct MarkSnapshotKey
@@ -105,6 +116,14 @@ constexpr std::array<DivineJudgmentRankData, 7> DivineJudgmentRanks =
     {900256, 430},
 }};
 
+constexpr std::array<PurifyingGlareRankData, 4> PurifyingGlareRanks =
+{{
+    {900300, 100},
+    {900301, 165},
+    {900302, 250},
+    {900303, 340},
+}};
+
 bool IsFlameOfJudgment(uint32 spellId)
 {
     return spellId >= SPELL_FLAME_OF_JUDGMENT_FIRST && spellId <= SPELL_FLAME_OF_JUDGMENT_LAST;
@@ -123,6 +142,11 @@ bool IsDivineJudgment(uint32 spellId)
 bool IsRadiantStrike(uint32 spellId)
 {
     return spellId >= SPELL_RADIANT_STRIKE_FIRST && spellId <= SPELL_RADIANT_STRIKE_LAST;
+}
+
+bool IsPurifyingGlare(uint32 spellId)
+{
+    return spellId >= SPELL_PURIFYING_GLARE_FIRST && spellId <= SPELL_PURIFYING_GLARE_LAST;
 }
 
 bool IsGenerator(uint32 spellId)
@@ -153,6 +177,25 @@ DivineJudgmentRankData const* GetDivineJudgmentRank(uint32 spellId)
     });
 
     return itr != DivineJudgmentRanks.end() ? &*itr : nullptr;
+}
+
+PurifyingGlareRankData const* GetPurifyingGlareRank(uint32 spellId)
+{
+    auto itr = std::find_if(PurifyingGlareRanks.begin(), PurifyingGlareRanks.end(), [spellId](PurifyingGlareRankData const& rank)
+    {
+        return rank.spellId == spellId;
+    });
+
+    return itr != PurifyingGlareRanks.end() ? &*itr : nullptr;
+}
+
+DispelChargesList GetPurifyingGlareDispelCandidates(Unit* caster, Unit* target, SpellInfo const* spellInfo)
+{
+    DispelChargesList dispelList;
+    if (caster && target && spellInfo)
+        target->GetDispellableAuraList(caster, SpellInfo::GetDispelMask(DISPEL_MAGIC), dispelList, spellInfo);
+
+    return dispelList;
 }
 
 FervorState& GetState(Player* player)
@@ -319,6 +362,32 @@ void CastDivineJudgment(Player* caster, Unit* target, SpellInfo const* spellInfo
         DealRadiantDamage(caster, nearbyTarget, spellInfo, secondaryDamage);
     }
 }
+
+void CastPurifyingGlare(Player* caster, Unit* target, SpellInfo const* spellInfo)
+{
+    if (!caster || !target || !spellInfo || !target->IsAlive())
+        return;
+
+    PurifyingGlareRankData const* rank = GetPurifyingGlareRank(spellInfo->Id);
+    if (!rank)
+        return;
+
+    DispelChargesList dispelList = GetPurifyingGlareDispelCandidates(caster, target, spellInfo);
+    if (dispelList.empty())
+        return;
+
+    auto itr = dispelList.begin();
+    std::advance(itr, urand(0, uint32(dispelList.size()) - 1));
+
+    Aura* aura = itr->first;
+    if (!roll_chance_i(aura->CalcDispelChance(target, true)))
+        return;
+
+    target->RemoveAura(aura, AURA_REMOVE_BY_ENEMY_SPELL);
+
+    uint32 spellPowerDamage = uint32(float(caster->SpellBaseDamageBonusDone(SpellSchoolMask(SPELL_SCHOOL_MASK_HOLY | SPELL_SCHOOL_MASK_FIRE))) * PURIFYING_GLARE_SP_COEFFICIENT);
+    DealRadiantDamage(caster, target, spellInfo, rank->bonusDamageOnSuccess + spellPowerDamage);
+}
 }
 
 class reborn_rediance_player_script : public PlayerScript
@@ -397,15 +466,26 @@ public:
             return;
 
         SpellInfo const* spellInfo = spell->GetSpellInfo();
-        if (!spellInfo || !IsConsumer(spellInfo->Id))
+        if (!spellInfo)
             return;
 
         Player* player = spell->GetCaster() ? spell->GetCaster()->ToPlayer() : nullptr;
         if (!player || player->getClass() != CLASS_PRIEST)
             return;
 
-        if (!GetState(player).stacks)
-            result = SPELL_FAILED_NO_POWER;
+        if (IsConsumer(spellInfo->Id))
+        {
+            if (!GetState(player).stacks)
+                result = SPELL_FAILED_NO_POWER;
+            return;
+        }
+
+        if (IsPurifyingGlare(spellInfo->Id))
+        {
+            Unit* target = spell->m_targets.GetUnitTarget();
+            if (!target || GetPurifyingGlareDispelCandidates(player, target, spellInfo).empty())
+                result = SPELL_FAILED_NOTHING_TO_DISPEL;
+        }
     }
 
     void OnSpellCast(Spell* spell, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
@@ -419,6 +499,8 @@ public:
 
         if (IsConsumer(spellInfo->Id))
             CastDivineJudgment(player, spell ? spell->m_targets.GetUnitTarget() : nullptr, spellInfo);
+        else if (IsPurifyingGlare(spellInfo->Id))
+            CastPurifyingGlare(player, spell ? spell->m_targets.GetUnitTarget() : nullptr, spellInfo);
     }
 };
 
