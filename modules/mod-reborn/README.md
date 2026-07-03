@@ -12,15 +12,18 @@ Keep future server-side custom content in this module, split by domain under
 
 Current Rediance IDs:
 
-- SkillLine `90020`: Rediance
+- SkillLine `9003`: Rediance
 - Spell `900201`: Inner Fervor
-- Spell `900202`: Fervor stack aura
+- Technical auras `900202-900206`: Fervor stack display, not spellbook-learned
+- Spell `900210-900219`: Flame of Judgment ranks 1-10
+- Spell `900230-900238`: Mark of Sin ranks 1-9
 - Client SpellIcon `90020`: `Interface\\Icons\\Rediance_spellbook`
 - Client SpellIcon `90021`: `Interface\\Icons\\Fervor`
+- Client SpellIcon `90022`: `Interface\\Icons\\flame_of_judgment`
+- Client SpellIcon `90023`: `Interface\\Icons\\Mark_of_Sin`
 
-`Flame of Judgment`, `Mark of Sin`, and `Divine Judgment` are not present in
-this checkout yet. Their IDs must be filled in `src/priest/Rediance.cpp` when
-those spells are added.
+`Divine Judgment` is not present in this checkout yet. Its ID must be filled in
+`src/priest/Rediance.cpp` when that spell is added.
 
 Client patch requirements:
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import shutil
 import struct
 import subprocess
 import tempfile
@@ -17,15 +18,48 @@ BLP_CONV = Path("/Users/biagiogennuso/.cargo/bin/blp-conv")
 
 SKILLLINE_REDIANCE = 9003
 SPELL_INNER_FERVOR = 900201
-SPELL_FERVOR_AURA = 900202
+SPELL_FERVOR_AURA_FIRST = 900202
+SPELL_FERVOR_AURA_LAST = 900206
+SPELL_FLAME_OF_JUDGMENT_FIRST = 900210
+SPELL_MARK_OF_SIN_FIRST = 900230
 SPELLICON_REDIANCE = 90020
 SPELLICON_FERVOR = 90021
+SPELLICON_FLAME_OF_JUDGMENT = 90022
+SPELLICON_MARK_OF_SIN = 90023
 SKILLLINEABILITY_INNER_FERVOR = 900200
 SKILLLINEABILITY_FERVOR_AURA = 900201
+SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST = 900210
+SKILLLINEABILITY_MARK_OF_SIN_FIRST = 900230
 SKILLRACECLASS_REDIANCE = 9003
 PRIEST_CLASSMASK = 16
 ALL_RACES_MASK = 0
 ALL_RACES = 0xFFFF_FFFF
+SPELL_SCHOOL_RADIANT = 6
+
+FLAME_OF_JUDGMENT_RANKS = [
+    (1, 10, 34, 40),
+    (2, 16, 68, 80),
+    (3, 24, 137, 160),
+    (4, 32, 238, 276),
+    (5, 40, 371, 430),
+    (6, 48, 542, 628),
+    (7, 56, 759, 879),
+    (8, 64, 1002, 1162),
+    (9, 72, 1211, 1405),
+    (10, 80, 1410, 1636),
+]
+
+MARK_OF_SIN_RANKS = [
+    (1, 12, 24, 45),
+    (2, 20, 46, 90),
+    (3, 28, 74, 140),
+    (4, 36, 106, 190),
+    (5, 44, 140, 235),
+    (6, 52, 168, 275),
+    (7, 60, 180, 320),
+    (8, 70, 205, 355),
+    (9, 80, 230, 390),
+]
 
 
 class Dbc:
@@ -92,12 +126,60 @@ class Dbc:
         path.write_bytes(header + body + self.strings)
 
 
+def f32(value: float) -> int:
+    return struct.unpack("<I", struct.pack("<f", value))[0]
+
+
+def flame_description() -> str:
+    return (
+        "Hurls a punishing flame of holy judgment at the enemy, dealing $s1 Radiant damage and "
+        "generating 1 Fervor. If the target is affected by Mark of Sin, Flame of Judgment deals "
+        "15% additional damage."
+    )
+
+
+def mark_description(tick_damage: int, explosion_damage: int) -> str:
+    return (
+        "Brands the enemy, causing $o1 Radiant damage over $d. When Mark of Sin expires naturally, "
+        f"it explodes for at least {explosion_damage} Radiant damage per snapshotted Fervor. "
+        "Recasting before expiration prevents the explosion."
+    )
+
+
+def fervor_damage_taken_pct(stacks: int) -> int:
+    return max(0, stacks - 2) * 8
+
+
+def fervor_aura_description(stacks: int) -> str:
+    return f"Damage taken +{fervor_damage_taken_pct(stacks)}%."
+
+
+def owned_spell_ids() -> list[int]:
+    return [
+        SPELL_INNER_FERVOR,
+        *range(SPELL_FERVOR_AURA_FIRST, SPELL_FERVOR_AURA_LAST + 1),
+        *[SPELL_FLAME_OF_JUDGMENT_FIRST + rank - 1 for rank, *_ in FLAME_OF_JUDGMENT_RANKS],
+        *[SPELL_MARK_OF_SIN_FIRST + rank - 1 for rank, *_ in MARK_OF_SIN_RANKS],
+    ]
+
+
+def owned_skilllineability_ids() -> list[int]:
+    return [
+        SKILLLINEABILITY_INNER_FERVOR,
+        SKILLLINEABILITY_FERVOR_AURA,
+        *[SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST + rank - 1 for rank, *_ in FLAME_OF_JUDGMENT_RANKS],
+        *[SKILLLINEABILITY_MARK_OF_SIN_FIRST + rank - 1 for rank, *_ in MARK_OF_SIN_RANKS],
+    ]
+
+
 def patch_spellicon(src: Path, dst: Path) -> None:
     dbc = Dbc(src)
-    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR])
+    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN])
     for id_, texture in [
         (SPELLICON_REDIANCE, "Interface\\Icons\\Rediance_spellbook"),
         (SPELLICON_FERVOR, "Interface\\Icons\\Fervor"),
+        (SPELLICON_FLAME_OF_JUDGMENT, "Interface\\Icons\\flame_of_judgment"),
+        (SPELLICON_MARK_OF_SIN, "Interface\\Icons\\Mark_of_Sin"),
     ]:
         row = list(dbc.find(237))
         row[0] = id_
@@ -123,13 +205,16 @@ def patch_skillline(src: Path, dst: Path) -> None:
 
 def patch_skilllineability(src: Path, dst: Path) -> None:
     dbc = Dbc(src)
-    dbc.delete_ids([SKILLLINEABILITY_INNER_FERVOR, SKILLLINEABILITY_FERVOR_AURA])
-    dbc.rows = [row for row in dbc.rows if row[2] not in {SPELL_INNER_FERVOR, SPELL_FERVOR_AURA}]
+    spells = set(owned_spell_ids())
+    dbc.delete_ids(owned_skilllineability_ids())
+    dbc.rows = [row for row in dbc.rows if row[2] not in spells]
     template = dbc.find_by_field(2, 588)
-    for id_, spell in [
+    entries = [
         (SKILLLINEABILITY_INNER_FERVOR, SPELL_INNER_FERVOR),
-        (SKILLLINEABILITY_FERVOR_AURA, SPELL_FERVOR_AURA),
-    ]:
+    ]
+    entries.extend((SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST + rank - 1, SPELL_FLAME_OF_JUDGMENT_FIRST + rank - 1) for rank, *_ in FLAME_OF_JUDGMENT_RANKS)
+    entries.extend((SKILLLINEABILITY_MARK_OF_SIN_FIRST + rank - 1, SPELL_MARK_OF_SIN_FIRST + rank - 1) for rank, *_ in MARK_OF_SIN_RANKS)
+    for id_, spell in entries:
         row = list(template)
         row[0] = id_
         row[1] = SKILLLINE_REDIANCE
@@ -168,11 +253,12 @@ def patch_skillraceclass(src: Path, dst: Path) -> None:
 
 def patch_spell(src: Path, dst: Path) -> None:
     dbc = Dbc(src)
-    dbc.delete_ids([SPELL_INNER_FERVOR, SPELL_FERVOR_AURA])
+    dbc.delete_ids(owned_spell_ids())
 
     passive = list(dbc.find(14752))
     passive[0] = SPELL_INNER_FERVOR
     passive[4] = (passive[4] | 64) & ~128
+    passive[40] = 0
     passive[49] = 0
     for idx in [71, 72, 73, 80, 81, 82, 95, 96, 97]:
         passive[idx] = 0
@@ -182,7 +268,7 @@ def patch_spell(src: Path, dst: Path) -> None:
     passive[46] = 1   # RangeIndex: self (no range displayed)
     passive[204] = 0  # ManaCostPct: 0 (no mana cost)
     dbc.set_loc(passive, 153, 169, "Passive")
-    dbc.set_loc(passive, 170, 186, "Your Rediance spells build Fervor, up to 5 stacks. After 6 sec without generating or consuming Fervor, 1 stack is lost. At 3 or more stacks, direct melee and spell hits against you deal 8% additional damage for each stack above 2.")
+    dbc.set_loc(passive, 170, 186, "Your Rediance spells build Fervor, up to 5 stacks. After 6 sec without generating or consuming Fervor, 1 stack is lost.")
     dbc.set_loc(passive, 187, 203, "Fervor is generated by Flame of Judgment and Mark of Sin, and consumed by Divine Judgment.")
     passive[208] = 6
     passive[213] = 0
@@ -190,33 +276,119 @@ def patch_spell(src: Path, dst: Path) -> None:
     passive[225] = 2
     dbc.append(passive)
 
-    aura = list(dbc.find(14752))
-    aura[0] = SPELL_FERVOR_AURA
-    aura[4] |= 128
-    aura[49] = 5
-    aura[71] = 6
-    aura[72] = 0
-    aura[73] = 0
-    aura[80] = 0
-    aura[81] = 0
-    aura[82] = 0
-    aura[86] = 1
-    aura[87] = 0
-    aura[88] = 0
-    aura[95] = 4
-    aura[96] = 0
-    aura[97] = 0
-    aura[133] = SPELLICON_FERVOR
-    aura[134] = SPELLICON_FERVOR
-    dbc.set_loc(aura, 136, 152, "Fervor")
-    dbc.set_loc(aura, 153, 169, "")
-    dbc.set_loc(aura, 170, 186, "Secondary resource. Maximum 5 stacks.")
-    dbc.set_loc(aura, 187, 203, "At 3 or more stacks, direct melee and spell hits against you deal 8% additional damage for each stack above 2.")
-    aura[208] = 6
-    aura[213] = 0
-    aura[214] = 0
-    aura[225] = 2
-    dbc.append(aura)
+    for stacks in range(1, 6):
+        aura = list(dbc.find(14752))
+        aura[0] = SPELL_FERVOR_AURA_FIRST + stacks - 1
+        aura[4] = aura[4] & ~128 & ~64
+        aura[40] = 32
+        aura[49] = 5
+        aura[71] = 6
+        aura[72] = 0
+        aura[73] = 0
+        aura[80] = 0
+        aura[81] = 0
+        aura[82] = 0
+        aura[86] = 1
+        aura[87] = 0
+        aura[88] = 0
+        aura[95] = 4
+        aura[96] = 0
+        aura[97] = 0
+        aura[133] = SPELLICON_FERVOR
+        aura[134] = SPELLICON_FERVOR
+        dbc.set_loc(aura, 136, 152, "Fervor")
+        dbc.set_loc(aura, 153, 169, "")
+        dbc.set_loc(aura, 170, 186, fervor_aura_description(stacks))
+        dbc.set_loc(aura, 187, 203, fervor_aura_description(stacks))
+        aura[208] = 6
+        aura[213] = 0
+        aura[214] = 0
+        aura[225] = 2
+        dbc.append(aura)
+
+    for rank, level, damage_min, damage_max in FLAME_OF_JUDGMENT_RANKS:
+        spell = list(dbc.find(585))
+        spell_id = SPELL_FLAME_OF_JUDGMENT_FIRST + rank - 1
+        spell[0] = spell_id
+        spell[28] = 5
+        spell[37] = level
+        spell[38] = level
+        spell[39] = level
+        spell[40] = 0
+        spell[46] = 4
+        spell[49] = 0
+        for idx in [72, 73, 81, 82, 87, 88, 95, 96, 97, 98, 99, 100, 116, 117, 118]:
+            spell[idx] = 0
+        spell[71] = 2
+        spell[74] = damage_max - damage_min + 1
+        spell[77] = f32(0.0)
+        spell[80] = damage_min - 1
+        spell[86] = 6
+        spell[131] = 128
+        spell[132] = 0
+        spell[133] = SPELLICON_FLAME_OF_JUDGMENT
+        spell[134] = SPELLICON_FLAME_OF_JUDGMENT
+        dbc.set_loc(spell, 136, 152, "Flame of Judgment")
+        dbc.set_loc(spell, 153, 169, f"Rank {rank}")
+        dbc.set_loc(spell, 170, 186, flame_description())
+        dbc.set_loc(spell, 187, 203, "Deals $s1 Radiant damage. Generates 1 Fervor.")
+        spell[204] = 13
+        spell[205] = 133
+        spell[206] = 1500
+        spell[208] = 6
+        spell[213] = 1
+        spell[214] = 1
+        spell[216] = f32(1.0)
+        spell[217] = f32(1.0)
+        spell[218] = f32(1.0)
+        spell[225] = SPELL_SCHOOL_RADIANT
+        spell[229] = f32(0.571)
+        spell[230] = f32(0.0)
+        spell[231] = f32(0.0)
+        dbc.append(spell)
+
+    for rank, level, tick_damage, explosion_damage in MARK_OF_SIN_RANKS:
+        spell = list(dbc.find(589))
+        spell_id = SPELL_MARK_OF_SIN_FIRST + rank - 1
+        spell[0] = spell_id
+        spell[28] = 16
+        spell[37] = level
+        spell[38] = level
+        spell[39] = level
+        spell[40] = 8
+        spell[46] = 4
+        spell[49] = 0
+        for idx in [72, 73, 81, 82, 87, 88, 96, 97, 99, 100, 116, 117, 118]:
+            spell[idx] = 0
+        spell[71] = 6
+        spell[74] = 1
+        spell[77] = f32(0.0)
+        spell[80] = tick_damage - 1
+        spell[86] = 6
+        spell[95] = 3
+        spell[98] = 3000
+        spell[131] = 71
+        spell[132] = 0
+        spell[133] = SPELLICON_MARK_OF_SIN
+        spell[134] = SPELLICON_MARK_OF_SIN
+        dbc.set_loc(spell, 136, 152, "Mark of Sin")
+        dbc.set_loc(spell, 153, 169, f"Rank {rank}")
+        dbc.set_loc(spell, 170, 186, mark_description(tick_damage, explosion_damage))
+        dbc.set_loc(spell, 187, 203, f"$s1 Radiant damage every $t1 sec. Natural expiration explodes for at least {explosion_damage} damage per snapshotted Fervor.")
+        spell[204] = 15
+        spell[205] = 133
+        spell[206] = 1500
+        spell[208] = 6
+        spell[213] = 1
+        spell[214] = 1
+        spell[216] = f32(1.0)
+        spell[217] = f32(1.0)
+        spell[218] = f32(1.0)
+        spell[225] = SPELL_SCHOOL_RADIANT
+        spell[229] = f32(0.20)
+        spell[230] = f32(0.0)
+        spell[231] = f32(0.0)
+        dbc.append(spell)
 
     dbc.write(dst)
 
@@ -341,8 +513,13 @@ def build(client: Path, repo: Path) -> None:
     patch_skilllineability(dbc_src / "SkillLineAbility.dbc", dbfiles / "SkillLineAbility.dbc")
     patch_skillraceclass(dbc_src / "SkillRaceClassInfo.dbc", dbfiles / "SkillRaceClassInfo.dbc")
     patch_spell(dbc_src / "Spell.dbc", dbfiles / "Spell.dbc")
+    for name in required:
+        shutil.copy2(dbfiles / name, dbc_src / name)
+
     write_blp2_icon(repo / "icons_to_convert" / "Rediance_spellbook.png", icons / "Rediance_spellbook.blp")
     write_blp2_icon(repo / "icons_to_convert" / "Fervor.png", icons / "Fervor.blp")
+    write_blp2_icon(repo / "icons_to_convert" / "flame_of_judgment.png", icons / "flame_of_judgment.blp")
+    write_blp2_icon(repo / "icons_to_convert" / "Mark of Sin.png", icons / "Mark_of_Sin.blp")
 
     files = []
     for file in sorted(stage.rglob("*")):
