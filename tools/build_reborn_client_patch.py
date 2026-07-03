@@ -26,6 +26,7 @@ SPELL_DIVINE_JUDGMENT_FIRST = 900250
 SPELL_RADIANT_STRIKE_FIRST = 900260
 SPELL_HOLY_CHASTISEMENT_FIRST = 900270
 SPELL_STEP_OF_LIGHT_FIRST = 900280
+SPELL_JUDGES_GAZE_FIRST = 900290
 SPELLICON_REDIANCE = 90020
 SPELLICON_FERVOR = 90021
 SPELLICON_FLAME_OF_JUDGMENT = 90022
@@ -34,6 +35,7 @@ SPELLICON_DIVINE_JUDGMENT = 90024
 SPELLICON_RADIANT_STRIKE = 90025
 SPELLICON_HOLY_CHASTISEMENT = 90026
 SPELLICON_STEP_OF_LIGHT = 90027
+SPELLICON_JUDGES_GAZE = 90028
 SKILLLINEABILITY_INNER_FERVOR = 900200
 SKILLLINEABILITY_FERVOR_AURA = 900201
 SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST = 900210
@@ -42,6 +44,7 @@ SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST = 900250
 SKILLLINEABILITY_RADIANT_STRIKE_FIRST = 900260
 SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST = 900270
 SKILLLINEABILITY_STEP_OF_LIGHT_FIRST = 900280
+SKILLLINEABILITY_JUDGES_GAZE_FIRST = 900290
 SKILLRACECLASS_REDIANCE = 9003
 PRIEST_CLASSMASK = 16
 ALL_RACES_MASK = 0
@@ -106,6 +109,14 @@ STEP_OF_LIGHT_RANKS = [
     (1, 34, 13, 10),
     (2, 54, 17, 13),
     (3, 74, 18, 15),
+]
+
+# rank, required level, SpellDuration.dbc index, fear duration sec (verified against
+# ChromieCraft_3.3.5a/dbc/SpellDuration.dbc: 28=5000ms, 165=7000ms, 31=8000ms)
+JUDGES_GAZE_RANKS = [
+    (1, 38, 28, 5),
+    (2, 56, 165, 7),
+    (3, 74, 31, 8),
 ]
 
 
@@ -221,6 +232,13 @@ def step_of_light_description(distance_yd: int) -> str:
     )
 
 
+def judges_gaze_description(fear_duration_sec: int) -> str:
+    return (
+        f"Fixes the enemy beneath the gaze of judgment, fearing the target for {fear_duration_sec} sec. "
+        "Damage may break the effect."
+    )
+
+
 def fervor_damage_taken_pct(stacks: int) -> int:
     return max(0, stacks - 2) * 8
 
@@ -239,6 +257,7 @@ def owned_spell_ids() -> list[int]:
         *[SPELL_RADIANT_STRIKE_FIRST + rank - 1 for rank, *_ in RADIANT_STRIKE_RANKS],
         *[SPELL_HOLY_CHASTISEMENT_FIRST + rank - 1 for rank, *_ in HOLY_CHASTISEMENT_RANKS],
         *[SPELL_STEP_OF_LIGHT_FIRST + rank - 1 for rank, *_ in STEP_OF_LIGHT_RANKS],
+        *[SPELL_JUDGES_GAZE_FIRST + rank - 1 for rank, *_ in JUDGES_GAZE_RANKS],
     ]
 
 
@@ -252,12 +271,13 @@ def owned_skilllineability_ids() -> list[int]:
         *[SKILLLINEABILITY_RADIANT_STRIKE_FIRST + rank - 1 for rank, *_ in RADIANT_STRIKE_RANKS],
         *[SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST + rank - 1 for rank, *_ in HOLY_CHASTISEMENT_RANKS],
         *[SKILLLINEABILITY_STEP_OF_LIGHT_FIRST + rank - 1 for rank, *_ in STEP_OF_LIGHT_RANKS],
+        *[SKILLLINEABILITY_JUDGES_GAZE_FIRST + rank - 1 for rank, *_ in JUDGES_GAZE_RANKS],
     ]
 
 
 def patch_spellicon(src: Path, dst: Path) -> None:
     dbc = Dbc(src)
-    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN, SPELLICON_DIVINE_JUDGMENT, SPELLICON_RADIANT_STRIKE, SPELLICON_HOLY_CHASTISEMENT, SPELLICON_STEP_OF_LIGHT])
+    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN, SPELLICON_DIVINE_JUDGMENT, SPELLICON_RADIANT_STRIKE, SPELLICON_HOLY_CHASTISEMENT, SPELLICON_STEP_OF_LIGHT, SPELLICON_JUDGES_GAZE])
     for id_, texture in [
         (SPELLICON_REDIANCE, "Interface\\Icons\\Rediance_spellbook"),
         (SPELLICON_FERVOR, "Interface\\Icons\\Fervor"),
@@ -267,6 +287,7 @@ def patch_spellicon(src: Path, dst: Path) -> None:
         (SPELLICON_RADIANT_STRIKE, "Interface\\Icons\\Radiant_Strike"),
         (SPELLICON_HOLY_CHASTISEMENT, "Interface\\Icons\\Holy_Chastisement"),
         (SPELLICON_STEP_OF_LIGHT, "Interface\\Icons\\Step_of_Light"),
+        (SPELLICON_JUDGES_GAZE, "Interface\\Icons\\Judges_Gaze"),
     ]:
         row = list(dbc.find(237))
         row[0] = id_
@@ -305,6 +326,7 @@ def patch_skilllineability(src: Path, dst: Path) -> None:
     entries.extend((SKILLLINEABILITY_RADIANT_STRIKE_FIRST + rank - 1, SPELL_RADIANT_STRIKE_FIRST + rank - 1) for rank, *_ in RADIANT_STRIKE_RANKS)
     entries.extend((SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST + rank - 1, SPELL_HOLY_CHASTISEMENT_FIRST + rank - 1) for rank, *_ in HOLY_CHASTISEMENT_RANKS)
     entries.extend((SKILLLINEABILITY_STEP_OF_LIGHT_FIRST + rank - 1, SPELL_STEP_OF_LIGHT_FIRST + rank - 1) for rank, *_ in STEP_OF_LIGHT_RANKS)
+    entries.extend((SKILLLINEABILITY_JUDGES_GAZE_FIRST + rank - 1, SPELL_JUDGES_GAZE_FIRST + rank - 1) for rank, *_ in JUDGES_GAZE_RANKS)
     for id_, spell in entries:
         row = list(template)
         row[0] = id_
@@ -660,6 +682,43 @@ def patch_spell(src: Path, dst: Path) -> None:
         spell[225] = 2      # SchoolMask: Holy
         dbc.append(spell)
 
+    for rank, level, duration_index, fear_duration_sec in JUDGES_GAZE_RANKS:
+        # Clone Fear (5782): already SPELL_EFFECT_APPLY_AURA + SPELL_AURA_MOD_FEAR (7) on a single
+        # enemy target, with a 1.5 sec cast, 20 yd range and the native damage-breaks-effect interrupt
+        # flags built in. No custom C++ is needed for the fear behaviour.
+        spell = list(dbc.find(5782))
+        spell_id = SPELL_JUDGES_GAZE_FIRST + rank - 1
+        spell[0] = spell_id
+        spell[1] = 0            # Category: independent cooldown, not shared with Fear's category
+        spell[28] = 16          # CastingTimeIndex: 1.5 sec (inherited from Fear, kept explicit)
+        spell[29] = 25000       # RecoveryTime: 25 sec real per-spell cooldown
+        spell[30] = 0           # CategoryRecoveryTime: unused
+        spell[37] = level
+        spell[38] = level
+        spell[39] = level
+        spell[40] = duration_index
+        spell[46] = 3           # RangeIndex: 20 yd (inherited from Fear, kept explicit)
+        spell[133] = SPELLICON_JUDGES_GAZE
+        spell[134] = SPELLICON_JUDGES_GAZE
+        dbc.set_loc(spell, 136, 152, "Judge's Gaze")
+        dbc.set_loc(spell, 153, 169, f"Rank {rank}")
+        dbc.set_loc(spell, 170, 186, judges_gaze_description(fear_duration_sec))
+        dbc.set_loc(spell, 187, 203, f"Fears the target for {fear_duration_sec} sec. Damage may break the effect.")
+        spell[204] = 10          # ManaCostPercentage: 10% of base mana
+        spell[205] = 133
+        spell[206] = 0
+        spell[208] = 6           # SpellFamilyName: Priest (overrides Fear's Warlock family)
+        spell[209] = 0          # SpellFamilyFlags: cleared, Fear's Warlock-specific flags don't apply
+        spell[210] = 0
+        spell[211] = 0
+        spell[213] = 1
+        spell[214] = 1
+        spell[216] = f32(1.0)
+        spell[217] = f32(1.0)
+        spell[218] = f32(1.0)
+        spell[225] = 2           # SchoolMask: Holy (overrides Fear's Shadow school)
+        dbc.append(spell)
+
     dbc.write(dst)
 
 
@@ -794,6 +853,7 @@ def build(client: Path, repo: Path) -> None:
     write_blp2_icon(repo / "icons_to_convert" / "Radiant Strike.png", icons / "Radiant_Strike.blp")
     write_blp2_icon(repo / "icons_to_convert" / "Holy Chastisement.png", icons / "Holy_Chastisement.blp")
     write_blp2_icon(repo / "icons_to_convert" / 'Step of Light".png', icons / "Step_of_Light.blp")
+    write_blp2_icon(repo / "icons_to_convert" / "Judge's Gaze.png", icons / "Judges_Gaze.blp")
 
     files = []
     for file in sorted(stage.rglob("*")):
