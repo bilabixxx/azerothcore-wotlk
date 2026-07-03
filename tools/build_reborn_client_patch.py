@@ -22,14 +22,17 @@ SPELL_FERVOR_AURA_FIRST = 900202
 SPELL_FERVOR_AURA_LAST = 900206
 SPELL_FLAME_OF_JUDGMENT_FIRST = 900210
 SPELL_MARK_OF_SIN_FIRST = 900230
+SPELL_DIVINE_JUDGMENT_FIRST = 900250
 SPELLICON_REDIANCE = 90020
 SPELLICON_FERVOR = 90021
 SPELLICON_FLAME_OF_JUDGMENT = 90022
 SPELLICON_MARK_OF_SIN = 90023
+SPELLICON_DIVINE_JUDGMENT = 90024
 SKILLLINEABILITY_INNER_FERVOR = 900200
 SKILLLINEABILITY_FERVOR_AURA = 900201
 SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST = 900210
 SKILLLINEABILITY_MARK_OF_SIN_FIRST = 900230
+SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST = 900250
 SKILLRACECLASS_REDIANCE = 9003
 PRIEST_CLASSMASK = 16
 ALL_RACES_MASK = 0
@@ -59,6 +62,16 @@ MARK_OF_SIN_RANKS = [
     (7, 60, 180, 320),
     (8, 70, 205, 355),
     (9, 80, 230, 390),
+]
+
+DIVINE_JUDGMENT_RANKS = [
+    (1, 20, 100),
+    (2, 30, 160),
+    (3, 40, 220),
+    (4, 50, 280),
+    (5, 60, 330),
+    (6, 70, 380),
+    (7, 80, 430),
 ]
 
 
@@ -142,7 +155,15 @@ def mark_description(tick_damage: int, explosion_damage: int) -> str:
     return (
         "Brands the enemy, causing $o1 Radiant damage over $d. When Mark of Sin expires naturally, "
         f"it explodes for at least {explosion_damage} Radiant damage per snapshotted Fervor. "
-        "Recasting before expiration prevents the explosion."
+        "Can be cast while moving. Recasting before expiration prevents the explosion."
+    )
+
+
+def divine_judgment_description() -> str:
+    return (
+        "Releases accumulated Fervor in a burst of divine fire, dealing $s1 Radiant damage per "
+        "Fervor consumed to the primary target, and 50% of that amount to nearby enemies within "
+        "8 yards. Requires at least 1 Fervor and consumes all Fervor."
     )
 
 
@@ -160,6 +181,7 @@ def owned_spell_ids() -> list[int]:
         *range(SPELL_FERVOR_AURA_FIRST, SPELL_FERVOR_AURA_LAST + 1),
         *[SPELL_FLAME_OF_JUDGMENT_FIRST + rank - 1 for rank, *_ in FLAME_OF_JUDGMENT_RANKS],
         *[SPELL_MARK_OF_SIN_FIRST + rank - 1 for rank, *_ in MARK_OF_SIN_RANKS],
+        *[SPELL_DIVINE_JUDGMENT_FIRST + rank - 1 for rank, *_ in DIVINE_JUDGMENT_RANKS],
     ]
 
 
@@ -169,17 +191,19 @@ def owned_skilllineability_ids() -> list[int]:
         SKILLLINEABILITY_FERVOR_AURA,
         *[SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST + rank - 1 for rank, *_ in FLAME_OF_JUDGMENT_RANKS],
         *[SKILLLINEABILITY_MARK_OF_SIN_FIRST + rank - 1 for rank, *_ in MARK_OF_SIN_RANKS],
+        *[SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST + rank - 1 for rank, *_ in DIVINE_JUDGMENT_RANKS],
     ]
 
 
 def patch_spellicon(src: Path, dst: Path) -> None:
     dbc = Dbc(src)
-    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN])
+    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN, SPELLICON_DIVINE_JUDGMENT])
     for id_, texture in [
         (SPELLICON_REDIANCE, "Interface\\Icons\\Rediance_spellbook"),
         (SPELLICON_FERVOR, "Interface\\Icons\\Fervor"),
         (SPELLICON_FLAME_OF_JUDGMENT, "Interface\\Icons\\flame_of_judgment"),
         (SPELLICON_MARK_OF_SIN, "Interface\\Icons\\Mark_of_Sin"),
+        (SPELLICON_DIVINE_JUDGMENT, "Interface\\Icons\\Divine_Judgment"),
     ]:
         row = list(dbc.find(237))
         row[0] = id_
@@ -214,6 +238,7 @@ def patch_skilllineability(src: Path, dst: Path) -> None:
     ]
     entries.extend((SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST + rank - 1, SPELL_FLAME_OF_JUDGMENT_FIRST + rank - 1) for rank, *_ in FLAME_OF_JUDGMENT_RANKS)
     entries.extend((SKILLLINEABILITY_MARK_OF_SIN_FIRST + rank - 1, SPELL_MARK_OF_SIN_FIRST + rank - 1) for rank, *_ in MARK_OF_SIN_RANKS)
+    entries.extend((SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST + rank - 1, SPELL_DIVINE_JUDGMENT_FIRST + rank - 1) for rank, *_ in DIVINE_JUDGMENT_RANKS)
     for id_, spell in entries:
         row = list(template)
         row[0] = id_
@@ -352,6 +377,7 @@ def patch_spell(src: Path, dst: Path) -> None:
         spell_id = SPELL_MARK_OF_SIN_FIRST + rank - 1
         spell[0] = spell_id
         spell[28] = 16
+        spell[31] = spell[31] & ~0x1
         spell[37] = level
         spell[38] = level
         spell[39] = level
@@ -374,7 +400,7 @@ def patch_spell(src: Path, dst: Path) -> None:
         dbc.set_loc(spell, 136, 152, "Mark of Sin")
         dbc.set_loc(spell, 153, 169, f"Rank {rank}")
         dbc.set_loc(spell, 170, 186, mark_description(tick_damage, explosion_damage))
-        dbc.set_loc(spell, 187, 203, f"$s1 Radiant damage every $t1 sec. Natural expiration explodes for at least {explosion_damage} damage per snapshotted Fervor.")
+        dbc.set_loc(spell, 187, 203, f"$s1 Radiant damage every $t1 sec. Can be cast while moving. Natural expiration explodes for at least {explosion_damage} damage per snapshotted Fervor.")
         spell[204] = 15
         spell[205] = 133
         spell[206] = 1500
@@ -386,6 +412,47 @@ def patch_spell(src: Path, dst: Path) -> None:
         spell[218] = f32(1.0)
         spell[225] = SPELL_SCHOOL_RADIANT
         spell[229] = f32(0.20)
+        spell[230] = f32(0.0)
+        spell[231] = f32(0.0)
+        dbc.append(spell)
+
+    for rank, level, damage_per_fervor in DIVINE_JUDGMENT_RANKS:
+        spell = list(dbc.find(585))
+        spell_id = SPELL_DIVINE_JUDGMENT_FIRST + rank - 1
+        spell[0] = spell_id
+        spell[28] = 0
+        spell[37] = level
+        spell[38] = level
+        spell[39] = level
+        spell[40] = 0
+        spell[46] = 4
+        spell[49] = 0
+        for idx in [72, 73, 74, 81, 82, 87, 88, 95, 96, 97, 98, 99, 100, 116, 117, 118]:
+            spell[idx] = 0
+        spell[71] = 3
+        spell[74] = 1
+        spell[77] = f32(0.0)
+        spell[80] = damage_per_fervor - 1
+        spell[86] = 6
+        spell[131] = 71
+        spell[132] = 0
+        spell[133] = SPELLICON_DIVINE_JUDGMENT
+        spell[134] = SPELLICON_DIVINE_JUDGMENT
+        dbc.set_loc(spell, 136, 152, "Divine Judgment")
+        dbc.set_loc(spell, 153, 169, f"Rank {rank}")
+        dbc.set_loc(spell, 170, 186, divine_judgment_description())
+        dbc.set_loc(spell, 187, 203, "$s1 Radiant damage per Fervor consumed. Nearby enemies take 50%.")
+        spell[204] = 4
+        spell[205] = 133
+        spell[206] = 0
+        spell[208] = 6
+        spell[213] = 1
+        spell[214] = 1
+        spell[216] = f32(1.0)
+        spell[217] = f32(1.0)
+        spell[218] = f32(1.0)
+        spell[225] = SPELL_SCHOOL_RADIANT
+        spell[229] = f32(0.21)
         spell[230] = f32(0.0)
         spell[231] = f32(0.0)
         dbc.append(spell)
@@ -520,6 +587,7 @@ def build(client: Path, repo: Path) -> None:
     write_blp2_icon(repo / "icons_to_convert" / "Fervor.png", icons / "Fervor.blp")
     write_blp2_icon(repo / "icons_to_convert" / "flame_of_judgment.png", icons / "flame_of_judgment.blp")
     write_blp2_icon(repo / "icons_to_convert" / "Mark of Sin.png", icons / "Mark_of_Sin.blp")
+    write_blp2_icon(repo / "icons_to_convert" / "Divine Judgment.png", icons / "Divine_Judgment.blp")
 
     files = []
     for file in sorted(stage.rglob("*")):

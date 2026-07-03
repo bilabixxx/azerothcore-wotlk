@@ -1,4 +1,7 @@
 #include "AllSpellScript.h"
+#include "Cell.h"
+#include "CellImpl.h"
+#include "GridNotifiers.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "PlayerScript.h"
@@ -26,7 +29,10 @@ constexpr uint32 SPELL_FLAME_OF_JUDGMENT_FIRST = 900210;
 constexpr uint32 SPELL_FLAME_OF_JUDGMENT_LAST = 900219;
 constexpr uint32 SPELL_MARK_OF_SIN_FIRST = 900230;
 constexpr uint32 SPELL_MARK_OF_SIN_LAST = 900238;
-constexpr uint32 SPELL_DIVINE_JUDGMENT = 0;
+constexpr uint32 SPELL_DIVINE_JUDGMENT_FIRST = 900250;
+constexpr uint32 SPELL_DIVINE_JUDGMENT_LAST = 900256;
+constexpr float DIVINE_JUDGMENT_SP_COEFFICIENT_PER_FERVOR = 0.21f;
+constexpr float DIVINE_JUDGMENT_RADIUS = 8.0f;
 
 struct FervorState
 {
@@ -38,6 +44,12 @@ struct MarkOfSinRankData
 {
     uint32 spellId;
     uint32 explosionDamagePerFervor;
+};
+
+struct DivineJudgmentRankData
+{
+    uint32 spellId;
+    uint32 damagePerFervor;
 };
 
 struct MarkSnapshotKey
@@ -78,6 +90,17 @@ constexpr std::array<MarkOfSinRankData, 9> MarkOfSinRanks =
     {900238, 390},
 }};
 
+constexpr std::array<DivineJudgmentRankData, 7> DivineJudgmentRanks =
+{{
+    {900250, 100},
+    {900251, 160},
+    {900252, 220},
+    {900253, 280},
+    {900254, 330},
+    {900255, 380},
+    {900256, 430},
+}};
+
 bool IsFlameOfJudgment(uint32 spellId)
 {
     return spellId >= SPELL_FLAME_OF_JUDGMENT_FIRST && spellId <= SPELL_FLAME_OF_JUDGMENT_LAST;
@@ -88,6 +111,11 @@ bool IsMarkOfSin(uint32 spellId)
     return spellId >= SPELL_MARK_OF_SIN_FIRST && spellId <= SPELL_MARK_OF_SIN_LAST;
 }
 
+bool IsDivineJudgment(uint32 spellId)
+{
+    return spellId >= SPELL_DIVINE_JUDGMENT_FIRST && spellId <= SPELL_DIVINE_JUDGMENT_LAST;
+}
+
 bool IsGenerator(uint32 spellId)
 {
     return IsFlameOfJudgment(spellId) || IsMarkOfSin(spellId);
@@ -95,7 +123,7 @@ bool IsGenerator(uint32 spellId)
 
 bool IsConsumer(uint32 spellId)
 {
-    return spellId != 0 && spellId == SPELL_DIVINE_JUDGMENT;
+    return IsDivineJudgment(spellId);
 }
 
 MarkOfSinRankData const* GetMarkOfSinRank(uint32 spellId)
@@ -106,6 +134,16 @@ MarkOfSinRankData const* GetMarkOfSinRank(uint32 spellId)
     });
 
     return itr != MarkOfSinRanks.end() ? &*itr : nullptr;
+}
+
+DivineJudgmentRankData const* GetDivineJudgmentRank(uint32 spellId)
+{
+    auto itr = std::find_if(DivineJudgmentRanks.begin(), DivineJudgmentRanks.end(), [spellId](DivineJudgmentRankData const& rank)
+    {
+        return rank.spellId == spellId;
+    });
+
+    return itr != DivineJudgmentRanks.end() ? &*itr : nullptr;
 }
 
 FervorState& GetState(Player* player)
@@ -178,6 +216,17 @@ void ConsumeFervor(Player* player)
     SetStacks(player, state.stacks - 1);
 }
 
+uint8 ConsumeAllFervor(Player* player)
+{
+    FervorState& state = GetState(player);
+    uint8 stacks = state.stacks;
+    if (!stacks)
+        return 0;
+
+    SetStacks(player, 0);
+    return stacks;
+}
+
 uint32 DamageTakenBonusPct(Player* player)
 {
     FervorState const& state = GetState(player);
@@ -215,6 +264,51 @@ void DetonateMarkOfSin(Unit* target, Player* caster, uint32 spellId, uint8 snaps
 
     caster->SendSpellNonMeleeDamageLog(target, spellInfo, damage, spellInfo->GetSchoolMask(), 0, 0, false, 0);
     Unit::DealDamage(caster, target, damage, nullptr, SPELL_DIRECT_DAMAGE, spellInfo->GetSchoolMask(), spellInfo, true);
+}
+
+void DealRadiantDamage(Player* caster, Unit* target, SpellInfo const* spellInfo, uint32 damage)
+{
+    if (!caster || !target || !spellInfo || !target->IsAlive() || !damage)
+        return;
+
+    caster->SendSpellNonMeleeDamageLog(target, spellInfo, damage, spellInfo->GetSchoolMask(), 0, 0, false, 0);
+    Unit::DealDamage(caster, target, damage, nullptr, SPELL_DIRECT_DAMAGE, spellInfo->GetSchoolMask(), spellInfo, true);
+}
+
+void CastDivineJudgment(Player* caster, Unit* target, SpellInfo const* spellInfo)
+{
+    if (!caster || !target || !spellInfo || !target->IsAlive())
+        return;
+
+    DivineJudgmentRankData const* rank = GetDivineJudgmentRank(spellInfo->Id);
+    if (!rank)
+        return;
+
+    uint8 consumedFervor = ConsumeAllFervor(caster);
+    if (!consumedFervor)
+        return;
+
+    uint32 spellPowerDamage = uint32(float(caster->SpellBaseDamageBonusDone(SpellSchoolMask(SPELL_SCHOOL_MASK_HOLY | SPELL_SCHOOL_MASK_FIRE))) * DIVINE_JUDGMENT_SP_COEFFICIENT_PER_FERVOR * float(consumedFervor));
+    uint32 primaryDamage = (rank->damagePerFervor * consumedFervor) + spellPowerDamage;
+    uint32 secondaryDamage = primaryDamage / 2;
+
+    DealRadiantDamage(caster, target, spellInfo, primaryDamage);
+
+    std::list<Unit*> nearbyTargets;
+    Acore::AnyUnfriendlyUnitInObjectRangeCheck check(target, caster, DIVINE_JUDGMENT_RADIUS);
+    Acore::UnitListSearcher<Acore::AnyUnfriendlyUnitInObjectRangeCheck> searcher(target, nearbyTargets, check);
+    Cell::VisitObjects(target, searcher, DIVINE_JUDGMENT_RADIUS);
+
+    for (Unit* nearbyTarget : nearbyTargets)
+    {
+        if (!nearbyTarget || nearbyTarget == target || !nearbyTarget->IsAlive())
+            continue;
+
+        if (!caster->IsValidAttackTarget(nearbyTarget, spellInfo) || !nearbyTarget->IsWithinLOSInMap(caster))
+            continue;
+
+        DealRadiantDamage(caster, nearbyTarget, spellInfo, secondaryDamage);
+    }
 }
 }
 
@@ -284,11 +378,28 @@ public:
 class reborn_rediance_spell_script : public AllSpellScript
 {
 public:
-    reborn_rediance_spell_script() : AllSpellScript("reborn_rediance_spell_script", { ALLSPELLHOOK_ON_CAST })
+    reborn_rediance_spell_script() : AllSpellScript("reborn_rediance_spell_script", { ALLSPELLHOOK_ON_SPELL_CHECK_CAST, ALLSPELLHOOK_ON_CAST })
     {
     }
 
-    void OnSpellCast(Spell* /*spell*/, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
+    void OnSpellCheckCast(Spell* spell, bool /*strict*/, SpellCastResult& result) override
+    {
+        if (!spell || result != SPELL_CAST_OK)
+            return;
+
+        SpellInfo const* spellInfo = spell->GetSpellInfo();
+        if (!spellInfo || !IsConsumer(spellInfo->Id))
+            return;
+
+        Player* player = spell->GetCaster() ? spell->GetCaster()->ToPlayer() : nullptr;
+        if (!player || player->getClass() != CLASS_PRIEST)
+            return;
+
+        if (!GetState(player).stacks)
+            result = SPELL_FAILED_NO_POWER;
+    }
+
+    void OnSpellCast(Spell* spell, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
     {
         if (!caster || !spellInfo)
             return;
@@ -298,7 +409,7 @@ public:
             return;
 
         if (IsConsumer(spellInfo->Id))
-            ConsumeFervor(player);
+            CastDivineJudgment(player, spell ? spell->m_targets.GetUnitTarget() : nullptr, spellInfo);
     }
 };
 

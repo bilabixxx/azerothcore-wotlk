@@ -17,13 +17,12 @@ Current Rediance IDs:
 - Technical auras `900202-900206`: Fervor stack display, not spellbook-learned
 - Spell `900210-900219`: Flame of Judgment ranks 1-10
 - Spell `900230-900238`: Mark of Sin ranks 1-9
+- Spell `900250-900256`: Divine Judgment ranks 1-7
 - Client SpellIcon `90020`: `Interface\\Icons\\Rediance_spellbook`
 - Client SpellIcon `90021`: `Interface\\Icons\\Fervor`
 - Client SpellIcon `90022`: `Interface\\Icons\\flame_of_judgment`
 - Client SpellIcon `90023`: `Interface\\Icons\\Mark_of_Sin`
-
-`Divine Judgment` is not present in this checkout yet. Its ID must be filled in
-`src/priest/Rediance.cpp` when that spell is added.
+- Client SpellIcon `90024`: `Interface\\Icons\\Divine_Judgment`
 
 Client patch requirements:
 

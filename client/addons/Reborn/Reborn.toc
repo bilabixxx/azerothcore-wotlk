@@ -1,0 +1,9 @@
+## Interface: 30300
+## Title: |cFFFF8000Reborn|r
+## Notes: Client helpers for Reborn custom systems
+## Author: Reborn Custom
+## Version: 1.0.0
+## SavedVariables: RebornDB
+
+Reborn.lua
+modules\DynamicSpellTooltips.lua

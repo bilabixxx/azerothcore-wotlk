@@ -35,13 +35,12 @@ custom/
 │       ├── paladin_tenebra_twilight_specialization.json
 │       └── Twlight icons/          # Source PNG files for BLP conversion
 │
-└── addon/
-    └── reborn/                       # Unified client addon
-        ├── reborn.toc
-        ├── reborn.lua
+└── client/addons/
+    └── Reborn/                       # Unified Reborn client addon
+        ├── Reborn.toc
+        ├── Reborn.lua
         └── modules/
-            ├── QuestRarity.lua     # Quest rarity color display
-            └── MarkOfPack.lua      # Wolf Pack / Fourth Oath UI
+            └── DynamicSpellTooltips.lua # Dynamic custom spell tooltip calculations
 
 core/modules/mod-reborn/              # Single custom C++ module, organized by domain
 └── src/
@@ -72,7 +71,7 @@ items): **never put logic in the wrong layer.** Pick the layer, not the habit.
 | Client data (spell, talent, icon, item visual)    | `dbc_patch_reborn.py` → MPQ          | DBC definitions. **Talents that grant an ability: here, via LEARN_SPELL** |
 | Server data (quest, creature, item, loot, gossip) | `custom/sql/NN_*.sql`                | Anything that is an `acore_world` table                                   |
 | Behaviour (custom damage, proc, AI)               | C++ `SpellScript` / `CreatureScript` | ONLY logic the DBC/SQL cannot express                                     |
-| Client UI                                         | addon `reborn/modules/*.lua`         | Interface only                                                            |
+| Client UI                                         | addon `Reborn/modules/*.lua`         | Interface only, including dynamic tooltip calculations                    |
 
 ### Talent-granted abilities — do it in the DBC, not in C++
 
@@ -105,7 +104,26 @@ may still be learned server-side, because it is not gated by a talent.
 1. **DBC changes** (new spell, talent, icon): edit `custom/tools/dbc_patch_reborn.py`, then run `bash custom/tools/build_client_patch.sh /path/to/client`. For a talent that grants an ability, add it to `TALENT_TAUGHT_SPELLS` — do NOT learn it from C++.
 2. **Server script** (custom damage/proc/AI only): add a `.cpp` in the right `core/modules/mod-reborn/src/<domain>/` subfolder, expose an `AddX()` and call it from `mod_reborn_loader.cpp`, then rebuild worldserver. New file in an existing module = build only; new module directory = `cmake .` reconfigure first.
 3. **SQL** (quest template, NPC spawn, spell_script binding): create `custom/sql/NN_name.sql` and apply with: `/opt/homebrew/opt/mysql@8.4/bin/mysql --protocol=TCP -h127.0.0.1 -P3306 -uacore -pacore acore_world < custom/sql/NN_name.sql`
-4. **Client addon**: add module in `custom/addon/reborn/modules/` and register in `reborn.toc`.
+4. **Client addon**: add Reborn-wide UI helpers in source path `client/addons/Reborn/modules/`, register them in `client/addons/Reborn/Reborn.toc`, then copy/install the addon to the client as `Interface/AddOns/Reborn/`.
+
+### Dynamic spell tooltips
+
+DBC tooltip substitutions can show only static values from `Spell.dbc`; they
+cannot calculate player-state-dependent values such as current spell power,
+temporary buffs, equipped gear, or custom resources like Fervor. If a custom
+spell needs to show a live total, put that calculation in the Reborn client
+addon:
+
+- Source file: `client/addons/Reborn/modules/DynamicSpellTooltips.lua`.
+- Installed client file: `Interface/AddOns/Reborn/modules/DynamicSpellTooltips.lua`.
+- Register the module in `client/addons/Reborn/Reborn.toc`.
+- Keep the DBC tooltip as a sane fallback for players without the addon.
+- Store custom spell IDs, base values, coefficients, and resource rules in a
+  table in the module; do not hard-code one-off tooltip patches in unrelated
+  addons.
+- Example: Divine Judgment displays `(base damage + 0.21 * spell power) *
+  current Fervor` dynamically in the tooltip, while the server remains the
+  source of truth for actual damage.
 
 ### Update checklist (in order)
 
