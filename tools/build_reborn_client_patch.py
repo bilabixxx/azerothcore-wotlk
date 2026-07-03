@@ -25,6 +25,7 @@ SPELL_MARK_OF_SIN_FIRST = 900230
 SPELL_DIVINE_JUDGMENT_FIRST = 900250
 SPELL_RADIANT_STRIKE_FIRST = 900260
 SPELL_HOLY_CHASTISEMENT_FIRST = 900270
+SPELL_STEP_OF_LIGHT_FIRST = 900280
 SPELLICON_REDIANCE = 90020
 SPELLICON_FERVOR = 90021
 SPELLICON_FLAME_OF_JUDGMENT = 90022
@@ -32,6 +33,7 @@ SPELLICON_MARK_OF_SIN = 90023
 SPELLICON_DIVINE_JUDGMENT = 90024
 SPELLICON_RADIANT_STRIKE = 90025
 SPELLICON_HOLY_CHASTISEMENT = 90026
+SPELLICON_STEP_OF_LIGHT = 90027
 SKILLLINEABILITY_INNER_FERVOR = 900200
 SKILLLINEABILITY_FERVOR_AURA = 900201
 SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST = 900210
@@ -39,6 +41,7 @@ SKILLLINEABILITY_MARK_OF_SIN_FIRST = 900230
 SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST = 900250
 SKILLLINEABILITY_RADIANT_STRIKE_FIRST = 900260
 SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST = 900270
+SKILLLINEABILITY_STEP_OF_LIGHT_FIRST = 900280
 SKILLRACECLASS_REDIANCE = 9003
 PRIEST_CLASSMASK = 16
 ALL_RACES_MASK = 0
@@ -96,6 +99,13 @@ HOLY_CHASTISEMENT_RANKS = [
     (2, 46, 210),
     (3, 62, 300),
     (4, 78, 390),
+]
+
+# rank, required level, SpellRadius.dbc index (10/13/15 yd, verified against ChromieCraft_3.3.5a/dbc/SpellRadius.dbc)
+STEP_OF_LIGHT_RANKS = [
+    (1, 34, 13, 10),
+    (2, 54, 17, 13),
+    (3, 74, 18, 15),
 ]
 
 
@@ -205,6 +215,12 @@ def holy_chastisement_description() -> str:
     )
 
 
+def step_of_light_description(distance_yd: int) -> str:
+    return (
+        f"Dashes {distance_yd} yards forward in a straight line. Cannot be used while stunned."
+    )
+
+
 def fervor_damage_taken_pct(stacks: int) -> int:
     return max(0, stacks - 2) * 8
 
@@ -222,6 +238,7 @@ def owned_spell_ids() -> list[int]:
         *[SPELL_DIVINE_JUDGMENT_FIRST + rank - 1 for rank, *_ in DIVINE_JUDGMENT_RANKS],
         *[SPELL_RADIANT_STRIKE_FIRST + rank - 1 for rank, *_ in RADIANT_STRIKE_RANKS],
         *[SPELL_HOLY_CHASTISEMENT_FIRST + rank - 1 for rank, *_ in HOLY_CHASTISEMENT_RANKS],
+        *[SPELL_STEP_OF_LIGHT_FIRST + rank - 1 for rank, *_ in STEP_OF_LIGHT_RANKS],
     ]
 
 
@@ -234,12 +251,13 @@ def owned_skilllineability_ids() -> list[int]:
         *[SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST + rank - 1 for rank, *_ in DIVINE_JUDGMENT_RANKS],
         *[SKILLLINEABILITY_RADIANT_STRIKE_FIRST + rank - 1 for rank, *_ in RADIANT_STRIKE_RANKS],
         *[SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST + rank - 1 for rank, *_ in HOLY_CHASTISEMENT_RANKS],
+        *[SKILLLINEABILITY_STEP_OF_LIGHT_FIRST + rank - 1 for rank, *_ in STEP_OF_LIGHT_RANKS],
     ]
 
 
 def patch_spellicon(src: Path, dst: Path) -> None:
     dbc = Dbc(src)
-    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN, SPELLICON_DIVINE_JUDGMENT, SPELLICON_RADIANT_STRIKE, SPELLICON_HOLY_CHASTISEMENT])
+    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN, SPELLICON_DIVINE_JUDGMENT, SPELLICON_RADIANT_STRIKE, SPELLICON_HOLY_CHASTISEMENT, SPELLICON_STEP_OF_LIGHT])
     for id_, texture in [
         (SPELLICON_REDIANCE, "Interface\\Icons\\Rediance_spellbook"),
         (SPELLICON_FERVOR, "Interface\\Icons\\Fervor"),
@@ -248,6 +266,7 @@ def patch_spellicon(src: Path, dst: Path) -> None:
         (SPELLICON_DIVINE_JUDGMENT, "Interface\\Icons\\Divine_Judgment"),
         (SPELLICON_RADIANT_STRIKE, "Interface\\Icons\\Radiant_Strike"),
         (SPELLICON_HOLY_CHASTISEMENT, "Interface\\Icons\\Holy_Chastisement"),
+        (SPELLICON_STEP_OF_LIGHT, "Interface\\Icons\\Step_of_Light"),
     ]:
         row = list(dbc.find(237))
         row[0] = id_
@@ -285,6 +304,7 @@ def patch_skilllineability(src: Path, dst: Path) -> None:
     entries.extend((SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST + rank - 1, SPELL_DIVINE_JUDGMENT_FIRST + rank - 1) for rank, *_ in DIVINE_JUDGMENT_RANKS)
     entries.extend((SKILLLINEABILITY_RADIANT_STRIKE_FIRST + rank - 1, SPELL_RADIANT_STRIKE_FIRST + rank - 1) for rank, *_ in RADIANT_STRIKE_RANKS)
     entries.extend((SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST + rank - 1, SPELL_HOLY_CHASTISEMENT_FIRST + rank - 1) for rank, *_ in HOLY_CHASTISEMENT_RANKS)
+    entries.extend((SKILLLINEABILITY_STEP_OF_LIGHT_FIRST + rank - 1, SPELL_STEP_OF_LIGHT_FIRST + rank - 1) for rank, *_ in STEP_OF_LIGHT_RANKS)
     for id_, spell in entries:
         row = list(template)
         row[0] = id_
@@ -600,6 +620,46 @@ def patch_spell(src: Path, dst: Path) -> None:
         spell[231] = f32(0.0)
         dbc.append(spell)
 
+    for rank, level, radius_index, distance_yd in STEP_OF_LIGHT_RANKS:
+        # Clone Blink (1953): SPELL_EFFECT_LEAP (29) + TARGET_DEST_CASTER_FRONT_LEAP (55, ImplicitTargetB[0])
+        # is the engine's native forward-dash effect (Spell::EffectLeap / TARGET_DEST_CASTER_FRONT_LEAP in
+        # Spell.cpp), including ground-collision-aware pathing. No custom C++ is needed for the movement.
+        spell = list(dbc.find(1953))
+        spell_id = SPELL_STEP_OF_LIGHT_FIRST + rank - 1
+        spell[0] = spell_id
+        spell[1] = 0        # Category: independent cooldown, not shared with Blink's category 44
+        spell[28] = 1       # CastingTimeIndex: instant (inherited from Blink, kept explicit)
+        spell[29] = 20000   # RecoveryTime: real per-spell cooldown in ms
+        spell[30] = 0       # CategoryRecoveryTime: unused, no shared-category cooldown
+        spell[37] = level
+        spell[38] = level
+        spell[39] = level
+        spell[40] = 0       # DurationIndex: no aura effect kept, no duration needed
+        # Effect1/Effect2 on Blink apply a cosmetic aura during the leap; Step of Light only needs Effect0.
+        spell[72] = 0
+        spell[73] = 0
+        spell[87] = 0
+        spell[88] = 0
+        spell[92] = radius_index
+        spell[93] = 0
+        spell[94] = 0
+        spell[95] = 0
+        spell[96] = 0
+        spell[97] = 0
+        spell[111] = 0
+        spell[112] = 0
+        spell[133] = SPELLICON_STEP_OF_LIGHT
+        spell[134] = SPELLICON_STEP_OF_LIGHT
+        dbc.set_loc(spell, 136, 152, "Step of Light")
+        dbc.set_loc(spell, 153, 169, f"Rank {rank}")
+        dbc.set_loc(spell, 170, 186, step_of_light_description(distance_yd))
+        dbc.set_loc(spell, 187, 203, step_of_light_description(distance_yd))
+        spell[204] = 3      # ManaCostPercentage: 3% of base mana
+        spell[205] = 133
+        spell[206] = 0
+        spell[225] = 2      # SchoolMask: Holy
+        dbc.append(spell)
+
     dbc.write(dst)
 
 
@@ -733,6 +793,7 @@ def build(client: Path, repo: Path) -> None:
     write_blp2_icon(repo / "icons_to_convert" / "Divine Judgment.png", icons / "Divine_Judgment.blp")
     write_blp2_icon(repo / "icons_to_convert" / "Radiant Strike.png", icons / "Radiant_Strike.blp")
     write_blp2_icon(repo / "icons_to_convert" / "Holy Chastisement.png", icons / "Holy_Chastisement.blp")
+    write_blp2_icon(repo / "icons_to_convert" / 'Step of Light".png', icons / "Step_of_Light.blp")
 
     files = []
     for file in sorted(stage.rglob("*")):
