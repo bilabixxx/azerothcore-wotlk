@@ -24,18 +24,21 @@ SPELL_FLAME_OF_JUDGMENT_FIRST = 900210
 SPELL_MARK_OF_SIN_FIRST = 900230
 SPELL_DIVINE_JUDGMENT_FIRST = 900250
 SPELL_RADIANT_STRIKE_FIRST = 900260
+SPELL_HOLY_CHASTISEMENT_FIRST = 900270
 SPELLICON_REDIANCE = 90020
 SPELLICON_FERVOR = 90021
 SPELLICON_FLAME_OF_JUDGMENT = 90022
 SPELLICON_MARK_OF_SIN = 90023
 SPELLICON_DIVINE_JUDGMENT = 90024
 SPELLICON_RADIANT_STRIKE = 90025
+SPELLICON_HOLY_CHASTISEMENT = 90026
 SKILLLINEABILITY_INNER_FERVOR = 900200
 SKILLLINEABILITY_FERVOR_AURA = 900201
 SKILLLINEABILITY_FLAME_OF_JUDGMENT_FIRST = 900210
 SKILLLINEABILITY_MARK_OF_SIN_FIRST = 900230
 SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST = 900250
 SKILLLINEABILITY_RADIANT_STRIKE_FIRST = 900260
+SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST = 900270
 SKILLRACECLASS_REDIANCE = 9003
 PRIEST_CLASSMASK = 16
 ALL_RACES_MASK = 0
@@ -86,6 +89,13 @@ RADIANT_STRIKE_RANKS = [
     (6, 64, 450),
     (7, 72, 535),
     (8, 80, 620),
+]
+
+HOLY_CHASTISEMENT_RANKS = [
+    (1, 30, 120),
+    (2, 46, 210),
+    (3, 62, 300),
+    (4, 78, 390),
 ]
 
 
@@ -188,6 +198,13 @@ def radiant_strike_description() -> str:
     )
 
 
+def holy_chastisement_description() -> str:
+    return (
+        "Chastises the enemy with holy fire, interrupting spellcasting and silencing the target "
+        "for 3 sec. Also deals $s1 Radiant damage."
+    )
+
+
 def fervor_damage_taken_pct(stacks: int) -> int:
     return max(0, stacks - 2) * 8
 
@@ -204,6 +221,7 @@ def owned_spell_ids() -> list[int]:
         *[SPELL_MARK_OF_SIN_FIRST + rank - 1 for rank, *_ in MARK_OF_SIN_RANKS],
         *[SPELL_DIVINE_JUDGMENT_FIRST + rank - 1 for rank, *_ in DIVINE_JUDGMENT_RANKS],
         *[SPELL_RADIANT_STRIKE_FIRST + rank - 1 for rank, *_ in RADIANT_STRIKE_RANKS],
+        *[SPELL_HOLY_CHASTISEMENT_FIRST + rank - 1 for rank, *_ in HOLY_CHASTISEMENT_RANKS],
     ]
 
 
@@ -215,12 +233,13 @@ def owned_skilllineability_ids() -> list[int]:
         *[SKILLLINEABILITY_MARK_OF_SIN_FIRST + rank - 1 for rank, *_ in MARK_OF_SIN_RANKS],
         *[SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST + rank - 1 for rank, *_ in DIVINE_JUDGMENT_RANKS],
         *[SKILLLINEABILITY_RADIANT_STRIKE_FIRST + rank - 1 for rank, *_ in RADIANT_STRIKE_RANKS],
+        *[SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST + rank - 1 for rank, *_ in HOLY_CHASTISEMENT_RANKS],
     ]
 
 
 def patch_spellicon(src: Path, dst: Path) -> None:
     dbc = Dbc(src)
-    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN, SPELLICON_DIVINE_JUDGMENT, SPELLICON_RADIANT_STRIKE])
+    dbc.delete_ids([SPELLICON_REDIANCE, SPELLICON_FERVOR, SPELLICON_FLAME_OF_JUDGMENT, SPELLICON_MARK_OF_SIN, SPELLICON_DIVINE_JUDGMENT, SPELLICON_RADIANT_STRIKE, SPELLICON_HOLY_CHASTISEMENT])
     for id_, texture in [
         (SPELLICON_REDIANCE, "Interface\\Icons\\Rediance_spellbook"),
         (SPELLICON_FERVOR, "Interface\\Icons\\Fervor"),
@@ -228,6 +247,7 @@ def patch_spellicon(src: Path, dst: Path) -> None:
         (SPELLICON_MARK_OF_SIN, "Interface\\Icons\\Mark_of_Sin"),
         (SPELLICON_DIVINE_JUDGMENT, "Interface\\Icons\\Divine_Judgment"),
         (SPELLICON_RADIANT_STRIKE, "Interface\\Icons\\Radiant_Strike"),
+        (SPELLICON_HOLY_CHASTISEMENT, "Interface\\Icons\\Holy_Chastisement"),
     ]:
         row = list(dbc.find(237))
         row[0] = id_
@@ -264,6 +284,7 @@ def patch_skilllineability(src: Path, dst: Path) -> None:
     entries.extend((SKILLLINEABILITY_MARK_OF_SIN_FIRST + rank - 1, SPELL_MARK_OF_SIN_FIRST + rank - 1) for rank, *_ in MARK_OF_SIN_RANKS)
     entries.extend((SKILLLINEABILITY_DIVINE_JUDGMENT_FIRST + rank - 1, SPELL_DIVINE_JUDGMENT_FIRST + rank - 1) for rank, *_ in DIVINE_JUDGMENT_RANKS)
     entries.extend((SKILLLINEABILITY_RADIANT_STRIKE_FIRST + rank - 1, SPELL_RADIANT_STRIKE_FIRST + rank - 1) for rank, *_ in RADIANT_STRIKE_RANKS)
+    entries.extend((SKILLLINEABILITY_HOLY_CHASTISEMENT_FIRST + rank - 1, SPELL_HOLY_CHASTISEMENT_FIRST + rank - 1) for rank, *_ in HOLY_CHASTISEMENT_RANKS)
     for id_, spell in entries:
         row = list(template)
         row[0] = id_
@@ -526,6 +547,59 @@ def patch_spell(src: Path, dst: Path) -> None:
         spell[231] = f32(0.0)
         dbc.append(spell)
 
+    for rank, level, base_damage in HOLY_CHASTISEMENT_RANKS:
+        spell = list(dbc.find(585))
+        spell_id = SPELL_HOLY_CHASTISEMENT_FIRST + rank - 1
+        spell[0] = spell_id
+        spell[1] = 0  # Category: independent cooldown
+        spell[28] = 1  # CastingTimeIndex: instant
+        spell[29] = 20000  # RecoveryTime: 20 sec cooldown
+        spell[30] = 0  # CategoryRecoveryTime: unused
+        spell[37] = level
+        spell[38] = level
+        spell[39] = level
+        spell[40] = 27  # DurationIndex: 3000ms, drives both the silence aura and the interrupt lockout
+        spell[46] = 3  # RangeIndex: 20 yd
+        spell[49] = 0
+        for idx in [75, 76, 89, 90, 91, 98, 99, 100, 116, 117, 118]:
+            spell[idx] = 0
+        spell[71] = 2    # Effect0: SCHOOL_DAMAGE
+        spell[72] = 6    # Effect1: APPLY_AURA
+        spell[73] = 68   # Effect2: INTERRUPT_CAST
+        spell[74] = 1
+        spell[77] = f32(0.0)
+        spell[80] = base_damage - 1
+        spell[81] = 0
+        spell[82] = 0
+        spell[86] = 6
+        spell[87] = 6
+        spell[88] = 6
+        spell[95] = 0
+        spell[96] = 27  # EffectAura1: MOD_SILENCE
+        spell[97] = 0
+        spell[131] = 128
+        spell[132] = 0
+        spell[133] = SPELLICON_HOLY_CHASTISEMENT
+        spell[134] = SPELLICON_HOLY_CHASTISEMENT
+        dbc.set_loc(spell, 136, 152, "Holy Chastisement")
+        dbc.set_loc(spell, 153, 169, f"Rank {rank}")
+        dbc.set_loc(spell, 170, 186, holy_chastisement_description())
+        dbc.set_loc(spell, 187, 203, "Interrupts spellcasting and silences the target for 3 sec. Deals $s1 Radiant damage.")
+        spell[204] = 9
+        spell[205] = 133
+        spell[206] = 0
+        spell[208] = 6
+        spell[213] = 1
+        spell[214] = 1
+        spell[216] = f32(1.0)
+        spell[217] = f32(1.0)
+        spell[218] = f32(1.0)
+        spell[225] = SPELL_SCHOOL_RADIANT
+        spell[229] = f32(0.15)
+        spell[230] = f32(0.0)
+        spell[231] = f32(0.0)
+        dbc.append(spell)
+
     dbc.write(dst)
 
 
@@ -658,6 +732,7 @@ def build(client: Path, repo: Path) -> None:
     write_blp2_icon(repo / "icons_to_convert" / "Mark of Sin.png", icons / "Mark_of_Sin.blp")
     write_blp2_icon(repo / "icons_to_convert" / "Divine Judgment.png", icons / "Divine_Judgment.blp")
     write_blp2_icon(repo / "icons_to_convert" / "Radiant Strike.png", icons / "Radiant_Strike.blp")
+    write_blp2_icon(repo / "icons_to_convert" / "Holy Chastisement.png", icons / "Holy_Chastisement.blp")
 
     files = []
     for file in sorted(stage.rglob("*")):

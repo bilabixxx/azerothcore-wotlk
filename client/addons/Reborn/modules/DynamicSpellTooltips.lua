@@ -41,6 +41,10 @@ local SPELLS = {
     [900265] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 450, spellPowerCoefficient = 0.26 },
     [900266] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 535, spellPowerCoefficient = 0.26 },
     [900267] = { name = "Radiant Strike", kind = "radiant_strike", baseDamage = 620, spellPowerCoefficient = 0.26 },
+    [900270] = { name = "Holy Chastisement", kind = "direct", minDamage = 120, maxDamage = 120, spellPowerCoefficient = 0.15 },
+    [900271] = { name = "Holy Chastisement", kind = "direct", minDamage = 210, maxDamage = 210, spellPowerCoefficient = 0.15 },
+    [900272] = { name = "Holy Chastisement", kind = "direct", minDamage = 300, maxDamage = 300, spellPowerCoefficient = 0.15 },
+    [900273] = { name = "Holy Chastisement", kind = "direct", minDamage = 390, maxDamage = 390, spellPowerCoefficient = 0.15 },
 }
 
 local function Round(value)
